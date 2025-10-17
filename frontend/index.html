@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyData Assistant - AI-Powered Data Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    <h1>PyData Assistant</h1>
+                </div>
+                <div class="header-info">
+                    <div class="session-info" id="sessionInfo" style="display: none;">
+                        <span class="session-id">Session: <span id="currentSessionId">None</span></span>
+                        <span class="session-time">Duration: <span id="sessionDuration">00:00</span></span>
+                    </div>
+                    <div class="header-actions">
+                        <button class="header-btn" id="exportBtn" title="Export Results" style="display: none;">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="header-btn" id="settingsBtn" title="Settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="header-btn" id="helpBtn" title="Help & Examples">
+                            <i class="fas fa-question-circle"></i>
+                        </button>
+                    </div>
+                    <span class="version">v2.0</span>
+                    <span class="status-indicator" id="statusIndicator">
+                        <i class="fas fa-circle"></i> Ready
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Upload Section -->
+            <section class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h2>Upload Your CSV Dataset</h2>
+                    <p>Drag & drop your CSV file here, or click to select</p>
+                    <input type="file" id="fileInput" accept=".csv" hidden>
+                    <button class="upload-btn" id="uploadBtn">
+                        <i class="fas fa-file-csv"></i> Choose CSV File
+                    </button>
+                    <!-- Upload Progress -->
+                    <div class="upload-progress" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Processing...</div>
+                    </div>
+                </div>
+                <div class="upload-options">
+                    <div class="option-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="autoAnalysis" checked>
+                            <span class="checkmark"></span>
+                            Auto-generate data insights
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="detectTypes" checked>
+                            <span class="checkmark"></span>
+                            Auto-detect column types
+                        </label>
+                    </div>
+                </div>
+                <div class="upload-info">
+                    <p><i class="fas fa-info-circle"></i> Maximum file size: 16MB • Supported formats: CSV, TSV</p>
+                    <p><i class="fas fa-shield-alt"></i> Your data is processed securely and never stored permanently</p>
+                </div>
+            </section>
+
+            <!-- Data Preview Section -->
+            <section class="preview-section" id="previewSection" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-eye"></i> Data Preview</h2>
+                    <div class="dataset-info" id="datasetInfo"></div>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-tabs">
+                        <button class="tab-btn active" data-tab="overview"><i class="fas fa-eye"></i> Overview</button>
+                        <button class="tab-btn" data-tab="sample"><i class="fas fa-table"></i> Sample Data</button>
+                        <button class="tab-btn" data-tab="stats"><i class="fas fa-chart-bar"></i> Statistics</button>
+                        <button class="tab-btn" data-tab="quality"><i class="fas fa-check-circle"></i> Data Quality</button>
+                        <button class="tab-btn" data-tab="columns"><i class="fas fa-columns"></i> Columns</button>
+                        <button class="tab-btn" data-tab="insights"><i class="fas fa-lightbulb"></i> AI Insights</button>
+                    </div>
+                    <div class="tab-content" id="tabContent">
+                        <!-- Dynamic content will be loaded here -->
+                    </div>
+                    <div class="quick-actions" id="quickActions" style="display: none;">
+                        <h4><i class="fas fa-bolt"></i> Quick Analysis</h4>
+                        <div class="action-buttons">
+                            <button class="quick-btn" data-action="describe">Describe Dataset</button>
+                            <button class="quick-btn" data-action="missing">Check Missing Values</button>
+                            <button class="quick-btn" data-action="correlations">Show Correlations</button>
+                            <button class="quick-btn" data-action="outliers">Detect Outliers</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat Section -->
+            <section class="chat-section" id="chatSection" style="display: none;">
+                <div class="section-header">
+                    <h2><i class="fas fa-comments"></i> Data Analysis Chat</h2>
+                    <div class="chat-controls">
+                        <button class="chat-btn" id="clearChatBtn" title="Clear Chat">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="chat-btn" id="saveChatBtn" title="Save Conversation">
+                            <i class="fas fa-save"></i>
+                        </button>
+                        <button class="chat-btn" id="toggleSuggestionsBtn" title="Toggle Suggestions">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                        <button class="new-session-btn" id="newSessionBtn">
+                            <i class="fas fa-plus"></i> New Session
+                        </button>
+                    </div>
+                </div>
+                <div class="chat-container">
+                    <!-- Query Suggestions Sidebar -->
+                    <div class="suggestions-sidebar" id="suggestionsSidebar">
+                        <div class="sidebar-header">
+                            <h4><i class="fas fa-lightbulb"></i> Smart Suggestions</h4>
+                            <button class="close-sidebar" id="closeSidebar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="suggestion-categories">
+                            <div class="category" data-category="exploration">
+                                <h5><i class="fas fa-search"></i> Data Exploration</h5>
+                                <div class="suggestions-list" id="explorationSuggestions"></div>
+                            </div>
+                            <div class="category" data-category="visualization">
+                                <h5><i class="fas fa-chart-line"></i> Visualizations</h5>
+                                <div class="suggestions-list" id="visualizationSuggestions"></div>
+                            </div>
+                            <div class="category" data-category="analysis">
+                                <h5><i class="fas fa-calculator"></i> Statistical Analysis</h5>
+                                <div class="suggestions-list" id="analysisSuggestions"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="messages" id="messages">
+                        <div class="message assistant">
+                            <div class="message-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <p>👋 Hello! I've analyzed your dataset. You can now ask me questions about your data. Here are some examples:</p>
+                                <ul class="suggested-queries" id="initialSuggestions">
+                                    <li>"Show me a summary of the data"</li>
+                                    <li>"Create a visualization of [column name]"</li>
+                                    <li>"What are the correlations between variables?"</li>
+                                    <li>"Are there any missing values?"</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <div class="input-toolbar">
+                            <button class="toolbar-btn" id="voiceBtn" title="Voice Input">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <button class="toolbar-btn" id="cameraBtn" title="Attach Image">
+                                <i class="fas fa-camera"></i>
+                            </button>
+                            <button class="toolbar-btn" id="templateBtn" title="Query Templates">
+                                <i class="fas fa-code"></i>
+                            </button>
+                            <div class="toolbar-divider"></div>
+                            <button class="toolbar-btn" id="historyBtn" title="Query History">
+                                <i class="fas fa-history"></i>
+                            </button>
+                        </div>
+                        <div class="input-container">
+                            <div class="input-wrapper">
+                                <textarea id="queryInput" placeholder="Ask a question about your data..." maxlength="1000" rows="1"></textarea>
+                                <div class="input-actions">
+                                    <button class="action-btn" id="clearInputBtn" title="Clear">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <button class="action-btn" id="pasteBtn" title="Paste">
+                                        <i class="fas fa-paste"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button id="sendBtn" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="input-info">
+                            <div class="info-left">
+                                <span class="char-count" id="charCount">0/1000</span>
+                                <span class="query-type" id="queryType"></span>
+                            </div>
+                            <div class="info-right">
+                                <button class="info-btn" id="examplesBtn">
+                                    <i class="fas fa-question-circle"></i> Examples
+                                </button>
+                                <button class="info-btn" id="keyboardBtn">
+                                    <i class="fas fa-keyboard"></i> Shortcuts
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing your request...</p>
+            </div>
+        </div>
+
+        <!-- Error Modal -->
+        <div class="modal" id="errorModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Error</h3>
+                    <button class="close-btn" id="closeErrorModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="errorMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="dismissError">Dismiss</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div class="modal" id="settingsModal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3><i class="fas fa-cog"></i> Settings</h3>
+                    <button class="close-btn" id="closeSettingsModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-tabs">
+                        <button class="settings-tab active" data-tab="general">General</button>
+                        <button class="settings-tab" data-tab="ai">AI Settings</button>
+                        <button class="settings-tab" data-tab="display">Display</button>
+                        <button class="settings-tab" data-tab="advanced">Advanced</button>
+                    </div>
+                    <div class="settings-content" id="settingsContent">
+                        <!-- Settings content will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="resetSettings">Reset</button>
+                    <button class="btn-primary" id="saveSettings">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Modal -->
+        <div class="modal" id="helpModal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3><i class="fas fa-question-circle"></i> Help & Examples</h3>
+                    <button class="close-btn" id="closeHelpModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="help-content" id="helpContent">
+                        <!-- Help content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Modal -->
+        <div class="modal" id="exportModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-download"></i> Export Results</h3>
+                    <button class="close-btn" id="closeExportModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="export-options">
+                        <label class="export-option">
+                            <input type="checkbox" name="export" value="conversation" checked>
+                            <span>Conversation History</span>
+                        </label>
+                        <label class="export-option">
+                            <input type="checkbox" name="export" value="charts" checked>
+                            <span>Generated Charts</span>
+                        </label>
+                        <label class="export-option">
+                            <input type="checkbox" name="export" value="data">
+                            <span>Processed Data</span>
+                        </label>
+                        <label class="export-option">
+                            <input type="checkbox" name="export" value="insights">
+                            <span>AI Insights</span>
+                        </label>
+                    </div>
+                    <div class="export-format">
+                        <label>Export Format:</label>
+                        <select id="exportFormat">
+                            <option value="pdf">PDF Report</option>
+                            <option value="html">HTML Document</option>
+                            <option value="json">JSON Data</option>
+                            <option value="csv">CSV Files</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancelExport">Cancel</button>
+                    <button class="btn-primary" id="startExport">Export</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Query History Panel -->
+        <div class="side-panel" id="historyPanel">
+            <div class="panel-header">
+                <h4><i class="fas fa-history"></i> Query History</h4>
+                <button class="close-panel" id="closeHistoryPanel">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="panel-content">
+                <div class="search-box">
+                    <input type="text" id="historySearch" placeholder="Search queries...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="history-list" id="historyList">
+                    <!-- Query history will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
