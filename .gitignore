@@ -1,0 +1,78 @@
+# Python
+*.py[cod]
+*$py.class
+*.so
+__pycache__/
+*.egg
+*.egg-info/
+dist/
+build/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.env
+config/secrets.json
+secrets/
+*.key
+api_keys.txt
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Project-specific
+cache/
+*.log
+logs/
+*.csv
+!sample_data.csv
+!test_data.csv
+*.db
+*.sqlite
+*.sqlite3
+
+# Test & Development
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+.#*
