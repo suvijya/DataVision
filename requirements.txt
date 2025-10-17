@@ -5,13 +5,15 @@ uvicorn[standard]>=0.24.0
 # Data Processing
 pandas>=2.1.0
 numpy>=1.25.0
+openpyxl>=3.1.0
 
 # Data Visualization
 plotly>=5.17.0
 
-# Machine Learning (optional libraries for analysis)
+# Machine Learning and Advanced Analytics
 scipy>=1.11.0
 scikit-learn>=1.3.0
+seaborn>=0.12.0
 
 # LLM Integration
 google-generativeai>=0.3.0

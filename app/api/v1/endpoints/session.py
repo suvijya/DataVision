@@ -5,7 +5,9 @@ Handles CSV uploads, data analysis queries, and session lifecycle.
 
 import os
 import logging
-from typing import List, Dict, Any
+import io
+import pandas as pd
+from typing import List, Dict, Any, Optional
 
 from fastapi import (
     APIRouter, 
@@ -15,7 +17,8 @@ from fastapi import (
     Depends,
     Request
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 
 from app.core.simple_config import settings
 from app.services.session_manager import (
@@ -286,6 +289,185 @@ async def delete_session(
             content={
                 "error": "internal_server_error",
                 "message": "An error occurred while deleting the session.",
+                "status_code": 500
+            }
+        )
+
+
+# New data models for pagination and export
+class DataPageRequest(BaseModel):
+    session_id: str
+    page: int = 1
+    page_size: int = 50
+    search: Optional[str] = None
+    sort_column: Optional[str] = None
+    sort_direction: str = 'asc'
+
+class DataPageResponse(BaseModel):
+    columns: List[str]
+    rows: List[Dict[str, Any]]
+    total_rows: int
+    page: int
+    page_size: int
+    total_pages: int
+
+class ExportRequest(BaseModel):
+    session_id: str
+    format: str = 'csv'  # csv, xlsx, json
+
+
+@router.post(
+    "/session/data",
+    response_model=DataPageResponse,
+    summary="Get paginated dataset data",
+    description="Retrieve a specific page of the dataset with optional search and sorting.",
+    responses={
+        200: {"description": "Data page retrieved successfully"},
+        404: {"model": ErrorResponse, "description": "Session not found"},
+        500: {"model": ErrorResponse, "description": "Internal server error"}
+    }
+)
+async def get_dataset_page(request: DataPageRequest):
+    """
+    Get a paginated view of the dataset with optional search and sorting.
+    """
+    try:
+        session = get_session_from_request(request.session_id)
+        df = session.dataframe.copy()
+        
+        # Apply search filter if provided
+        if request.search and request.search.strip():
+            search_term = request.search.strip().lower()
+            mask = df.astype(str).apply(
+                lambda x: x.str.lower().str.contains(search_term, na=False)
+            ).any(axis=1)
+            df = df[mask]
+        
+        # Apply sorting if provided
+        if request.sort_column and request.sort_column in df.columns:
+            ascending = request.sort_direction.lower() == 'asc'
+            df = df.sort_values(by=request.sort_column, ascending=ascending)
+        
+        # Calculate pagination
+        total_rows = len(df)
+        total_pages = max(1, (total_rows + request.page_size - 1) // request.page_size)
+        start_idx = (request.page - 1) * request.page_size
+        end_idx = min(start_idx + request.page_size, total_rows)
+        
+        # Get the page data
+        page_df = df.iloc[start_idx:end_idx]
+        
+        # Convert to records format
+        rows = page_df.fillna('').to_dict('records')
+        
+        # Convert numpy types to JSON serializable
+        rows = convert_numpy_types(rows)
+        
+        return DataPageResponse(
+            columns=list(df.columns),
+            rows=rows,
+            total_rows=total_rows,
+            page=request.page,
+            page_size=request.page_size,
+            total_pages=total_pages
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting dataset page for session {request.session_id}: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "data_page_error",
+                "message": str(e),
+                "status_code": 500
+            }
+        )
+
+
+@router.post(
+    "/session/export",
+    summary="Export dataset",
+    description="Export the dataset in various formats (CSV, Excel, JSON).",
+    responses={
+        200: {"description": "File exported successfully"},
+        404: {"model": ErrorResponse, "description": "Session not found"},
+        400: {"model": ErrorResponse, "description": "Invalid export format"},
+        500: {"model": ErrorResponse, "description": "Internal server error"}
+    }
+)
+async def export_dataset(request: ExportRequest):
+    """
+    Export the dataset in the specified format.
+    """
+    try:
+        session = get_session_from_request(request.session_id)
+        df = session.dataframe.copy()
+        
+        # Create filename with timestamp
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        if request.format.lower() == 'csv':
+            # Export as CSV
+            output = io.StringIO()
+            df.to_csv(output, index=False)
+            output.seek(0)
+            
+            filename = f"dataset_{timestamp}.csv"
+            media_type = "text/csv"
+            content = output.getvalue()
+            
+            return StreamingResponse(
+                io.StringIO(content),
+                media_type=media_type,
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+            
+        elif request.format.lower() in ['xlsx', 'excel']:
+            # Export as Excel
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Data', index=False)
+            output.seek(0)
+            
+            filename = f"dataset_{timestamp}.xlsx"
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            
+            return StreamingResponse(
+                io.BytesIO(output.getvalue()),
+                media_type=media_type,
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+            
+        elif request.format.lower() == 'json':
+            # Export as JSON
+            json_data = df.to_json(orient='records', indent=2)
+            
+            filename = f"dataset_{timestamp}.json"
+            media_type = "application/json"
+            
+            return StreamingResponse(
+                io.StringIO(json_data),
+                media_type=media_type,
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "invalid_format",
+                    "message": f"Unsupported export format: {request.format}. Supported formats: csv, xlsx, json",
+                    "status_code": 400
+                }
+            )
+            
+    except Exception as e:
+        logger.error(f"Error exporting dataset for session {request.session_id}: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "export_error",
+                "message": str(e),
                 "status_code": 500
             }
         )

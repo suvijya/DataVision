@@ -1373,6 +1373,333 @@ body {
     }
 }
 
+/* New Features - Dataset Actions */
+.dataset-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.action-btn {
+    padding: 10px 16px;
+    background: var(--primary);
+    color: var(--text-light);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+/* Export Buttons in Charts */
+.plot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.export-buttons button {
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.export-buttons button:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Full Dataset Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    width: 90%;
+    max-width: 1200px;
+    max-height: 90%;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-content.large {
+    width: 95%;
+    max-width: 1400px;
+}
+
+.modal-header {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dataset-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.search-input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    width: 200px;
+    transition: var(--transition);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.page-size-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    background: var(--bg-primary);
+    cursor: pointer;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.close-modal:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    flex: 1;
+    padding: var(--space-lg);
+    overflow: hidden;
+}
+
+.dataset-table-container {
+    height: 100%;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.dataset-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.dataset-table th {
+    background: var(--bg-tertiary);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.dataset-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: var(--transition);
+}
+
+.dataset-table th.sortable:hover {
+    background: var(--bg-secondary);
+}
+
+.dataset-table th.sorted-asc::after {
+    content: " ↑";
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.dataset-table th.sorted-desc::after {
+    content: " ↓";
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.dataset-table th i {
+    opacity: 0.5;
+    margin-left: 4px;
+    font-size: 10px;
+}
+
+.dataset-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.dataset-table tr:hover {
+    background: var(--bg-secondary);
+}
+
+.modal-footer {
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-controls button {
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.pagination-controls button:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    border-color: var(--border-hover);
+}
+
+.pagination-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-info {
+    padding: 8px 16px;
+    background: var(--primary);
+    color: var(--text-light);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-size: 16px;
+}
+
+.error {
+    color: var(--danger);
+    text-align: center;
+    padding: 20px;
+    font-weight: 500;
+}
+
+/* Responsive adjustments for new components */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        height: 90%;
+    }
+    
+    .dataset-controls {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .search-input {
+        width: 150px;
+    }
+    
+    .dataset-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .export-buttons {
+        flex-wrap: wrap;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+}
+
 /* Utility Classes */
 .text-center { text-align: center; }
 .text-left { text-align: left; }

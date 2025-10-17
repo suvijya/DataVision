@@ -287,6 +287,18 @@ class PyDataAssistant {
                     </div>
                 </div>
                 <p><strong>Columns:</strong> ${preview.columns.join(', ')}</p>
+                
+                <div class="dataset-actions">
+                    <button onclick="window.pyDataAssistant.showFullDatasetModal()" class="action-btn">
+                        <i class="fas fa-table"></i> View Full Dataset
+                    </button>
+                    <button onclick="window.pyDataAssistant.exportData('csv')" class="action-btn">
+                        <i class="fas fa-download"></i> Export CSV
+                    </button>
+                    <button onclick="window.pyDataAssistant.exportData('xlsx')" class="action-btn">
+                        <i class="fas fa-download"></i> Export Excel
+                    </button>
+                </div>
             </div>
         `;
     }
@@ -544,7 +556,20 @@ class PyDataAssistant {
             <div class="message-avatar"><i class="fas fa-chart-bar"></i></div>
             <div class="message-content">
                 <div class="plot-container">
-                    <h4>${title}</h4>
+                    <div class="plot-header">
+                        <h4>${title}</h4>
+                        <div class="export-buttons">
+                            <button onclick="window.pyDataAssistant.exportChart('${plotId}', 'png')" title="Export as PNG">
+                                <i class="fas fa-download"></i> PNG
+                            </button>
+                            <button onclick="window.pyDataAssistant.exportChart('${plotId}', 'svg')" title="Export as SVG">
+                                <i class="fas fa-download"></i> SVG
+                            </button>
+                            <button onclick="window.pyDataAssistant.exportChart('${plotId}', 'pdf')" title="Export as PDF">
+                                <i class="fas fa-download"></i> PDF
+                            </button>
+                        </div>
+                    </div>
                     <div id="${plotId}" class="plot-area"></div>
                     <p class="plot-message">${message}</p>
                 </div>
@@ -650,6 +675,326 @@ class PyDataAssistant {
         }
         
         return html;
+    }
+
+    // Export Functions
+    async exportChart(plotId, format) {
+        if (!plotId || typeof Plotly === 'undefined') {
+            this.showError('Unable to export chart. Plotly not available.');
+            return;
+        }
+
+        try {
+            const plotElement = document.getElementById(plotId);
+            if (!plotElement) {
+                this.showError('Chart not found.');
+                return;
+            }
+
+            let filename = `chart_${Date.now()}.${format}`;
+            
+            if (format === 'png') {
+                const imageData = await Plotly.toImage(plotElement, {
+                    format: 'png',
+                    width: 1200,
+                    height: 800
+                });
+                this.downloadBase64(imageData, filename);
+            } else if (format === 'svg') {
+                const svgData = await Plotly.toImage(plotElement, {
+                    format: 'svg',
+                    width: 1200,
+                    height: 800
+                });
+                this.downloadSVG(svgData, filename);
+            } else if (format === 'pdf') {
+                // For PDF, we'll convert PNG to PDF using canvas
+                const imageData = await Plotly.toImage(plotElement, {
+                    format: 'png',
+                    width: 1200,
+                    height: 800
+                });
+                this.downloadPDF(imageData, filename.replace('.pdf', '.png'));
+            }
+
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showError(`Export failed: ${error.message}`);
+        }
+    }
+
+    downloadBase64(base64Data, filename) {
+        const link = document.createElement('a');
+        link.href = base64Data;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    downloadSVG(svgData, filename) {
+        const blob = new Blob([svgData], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    downloadPDF(imageData, filename) {
+        // Simple PDF creation - just embed the image
+        // For a full PDF solution, you'd want to use jsPDF library
+        this.downloadBase64(imageData, filename);
+    }
+
+    async exportData(format = 'csv') {
+        if (!this.currentSessionId) {
+            this.showError('No active session. Please upload a dataset first.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/session/export`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: this.currentSessionId,
+                    format: format
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Export failed: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `dataset_${Date.now()}.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Data export error:', error);
+            this.showError(`Data export failed: ${error.message}`);
+        }
+    }
+
+    // Full Dataset Modal Functions
+    showFullDatasetModal() {
+        if (!this.currentSessionId) {
+            this.showError('No active session. Please upload a dataset first.');
+            return;
+        }
+
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('fullDatasetModal');
+        if (!modal) {
+            this.createFullDatasetModal();
+            modal = document.getElementById('fullDatasetModal');
+        }
+
+        // Reset pagination state
+        this.datasetPagination = {
+            currentPage: 1,
+            pageSize: 50,
+            totalRows: this.currentDataPreview?.shape[0] || 0,
+            searchTerm: '',
+            sortColumn: null,
+            sortDirection: 'asc'
+        };
+
+        this.loadDatasetPage();
+        modal.style.display = 'flex';
+    }
+
+    createFullDatasetModal() {
+        const modal = document.createElement('div');
+        modal.id = 'fullDatasetModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>Full Dataset Viewer</h3>
+                    <div class="dataset-controls">
+                        <input type="text" id="datasetSearch" placeholder="Search..." class="search-input">
+                        <select id="pageSizeSelect" class="page-size-select">
+                            <option value="25">25 rows</option>
+                            <option value="50" selected>50 rows</option>
+                            <option value="100">100 rows</option>
+                            <option value="200">200 rows</option>
+                        </select>
+                        <button class="close-modal" onclick="window.pyDataAssistant.closeFullDatasetModal()">×</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div id="datasetTableContainer" class="dataset-table-container">
+                        <div class="loading-spinner">Loading...</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="pagination-info" id="paginationInfo"></div>
+                    <div class="pagination-controls" id="paginationControls"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        const searchInput = modal.querySelector('#datasetSearch');
+        const pageSizeSelect = modal.querySelector('#pageSizeSelect');
+        
+        searchInput.addEventListener('input', () => {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                this.datasetPagination.searchTerm = searchInput.value;
+                this.datasetPagination.currentPage = 1;
+                this.loadDatasetPage();
+            }, 300);
+        });
+
+        pageSizeSelect.addEventListener('change', () => {
+            this.datasetPagination.pageSize = parseInt(pageSizeSelect.value);
+            this.datasetPagination.currentPage = 1;
+            this.loadDatasetPage();
+        });
+    }
+
+    async loadDatasetPage() {
+        const container = document.getElementById('datasetTableContainer');
+        if (!container) return;
+
+        container.innerHTML = '<div class="loading-spinner">Loading...</div>';
+
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/session/data`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: this.currentSessionId,
+                    page: this.datasetPagination.currentPage,
+                    page_size: this.datasetPagination.pageSize,
+                    search: this.datasetPagination.searchTerm,
+                    sort_column: this.datasetPagination.sortColumn,
+                    sort_direction: this.datasetPagination.sortDirection
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load dataset page');
+            }
+
+            const data = await response.json();
+            this.renderDatasetTable(data);
+            this.updatePaginationControls(data);
+
+        } catch (error) {
+            console.error('Load dataset page error:', error);
+            container.innerHTML = '<p class="error">Failed to load data</p>';
+        }
+    }
+
+    renderDatasetTable(data) {
+        const container = document.getElementById('datasetTableContainer');
+        if (!container) return;
+
+        let html = '<table class="dataset-table"><thead><tr>';
+        
+        // Headers with sorting
+        data.columns.forEach(col => {
+            const sortClass = this.datasetPagination.sortColumn === col ? 
+                `sorted-${this.datasetPagination.sortDirection}` : '';
+            html += `
+                <th class="sortable ${sortClass}" onclick="window.pyDataAssistant.sortDatasetBy('${col}')">
+                    ${col}
+                    <i class="fas fa-sort"></i>
+                </th>
+            `;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Data rows
+        data.rows.forEach((row, index) => {
+            html += '<tr>';
+            data.columns.forEach(col => {
+                const value = row[col] !== null && row[col] !== undefined ? row[col] : '';
+                html += `<td title="${String(value)}">${this.truncateText(String(value), 100)}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    updatePaginationControls(data) {
+        const infoElement = document.getElementById('paginationInfo');
+        const controlsElement = document.getElementById('paginationControls');
+        
+        if (!infoElement || !controlsElement) return;
+
+        const totalPages = Math.ceil(data.total_rows / this.datasetPagination.pageSize);
+        const startRow = (this.datasetPagination.currentPage - 1) * this.datasetPagination.pageSize + 1;
+        const endRow = Math.min(startRow + data.rows.length - 1, data.total_rows);
+
+        infoElement.innerHTML = `Showing ${startRow}-${endRow} of ${data.total_rows} rows`;
+
+        let controlsHtml = '';
+        if (totalPages > 1) {
+            controlsHtml += `
+                <button onclick="window.pyDataAssistant.goToDatasetPage(1)" 
+                        ${this.datasetPagination.currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button onclick="window.pyDataAssistant.goToDatasetPage(${this.datasetPagination.currentPage - 1})" 
+                        ${this.datasetPagination.currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                <span class="page-info">Page ${this.datasetPagination.currentPage} of ${totalPages}</span>
+                <button onclick="window.pyDataAssistant.goToDatasetPage(${this.datasetPagination.currentPage + 1})" 
+                        ${this.datasetPagination.currentPage === totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button onclick="window.pyDataAssistant.goToDatasetPage(${totalPages})" 
+                        ${this.datasetPagination.currentPage === totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            `;
+        }
+        controlsElement.innerHTML = controlsHtml;
+    }
+
+    sortDatasetBy(column) {
+        if (this.datasetPagination.sortColumn === column) {
+            this.datasetPagination.sortDirection = this.datasetPagination.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.datasetPagination.sortColumn = column;
+            this.datasetPagination.sortDirection = 'asc';
+        }
+        this.datasetPagination.currentPage = 1;
+        this.loadDatasetPage();
+    }
+
+    goToDatasetPage(page) {
+        this.datasetPagination.currentPage = page;
+        this.loadDatasetPage();
+    }
+
+    closeFullDatasetModal() {
+        const modal = document.getElementById('fullDatasetModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     // Utility Functions
