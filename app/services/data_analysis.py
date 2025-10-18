@@ -31,7 +31,7 @@ model = genai.GenerativeModel(settings.LLM_MODEL)
 
 
 def convert_numpy_types(obj):
-    """Convert NumPy types to JSON-serializable Python types."""
+    """Convert NumPy and Pandas types to JSON-serializable Python types."""
     if isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
@@ -40,10 +40,39 @@ def convert_numpy_types(obj):
         return obj.tolist()
     elif isinstance(obj, (np.bool_, bool)):
         return bool(obj)
+    elif isinstance(obj, pd.DataFrame):
+        # Convert DataFrame to a dict representation
+        try:
+            return {
+                'type': 'DataFrame',
+                'shape': obj.shape,
+                'columns': obj.columns.tolist(),
+                'sample_data': obj.head(5).to_dict('records')
+            }
+        except:
+            return {'type': 'DataFrame', 'shape': obj.shape, 'columns': obj.columns.tolist()}
+    elif isinstance(obj, pd.Series):
+        # Convert Series to a dict representation
+        try:
+            return {
+                'type': 'Series',
+                'name': obj.name,
+                'length': len(obj),
+                'dtype': str(obj.dtype),
+                'sample_values': obj.head(5).tolist()
+            }
+        except:
+            return {'type': 'Series', 'name': obj.name, 'length': len(obj)}
     elif isinstance(obj, dict):
         return {k: convert_numpy_types(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [convert_numpy_types(item) for item in obj]
+    elif hasattr(obj, 'to_dict') and callable(getattr(obj, 'to_dict')):
+        # Handle other pandas objects with to_dict method
+        try:
+            return convert_numpy_types(obj.to_dict())
+        except:
+            return str(obj)
     else:
         return obj
 
@@ -274,6 +303,7 @@ INSTRUCTIONS:
 6. Available modules: pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
 7. For summaries: use clear section headers like "### Dataset Overview ###"
 8. For visualizations: create ONE figure per request and use fig.show() at the end
+9. IMPORTANT: Do NOT use customdata or hovertemplate in Plotly charts - use simple hover_data parameter only
 
 FORMATTING GUIDELINES:
 - Use "###" for main section headers
@@ -281,6 +311,13 @@ FORMATTING GUIDELINES:
 - Use bullet points for lists
 - Add blank lines between sections
 - Format numbers with appropriate precision
+
+VISUALIZATION GUIDELINES:
+- For pie charts: Use px.pie(df, names='column', values='column', title='Title')
+- For bar charts: Use px.bar(df, x='column', y='column', title='Title')
+- For scatter plots: Use px.scatter(df, x='column', y='column', title='Title')
+- DO NOT manually set hovertemplate or customdata
+- Let Plotly handle hover data automatically
 
 RESPONSE FORMAT:
 Provide your analysis and then include the Python code in markdown code blocks like this:
@@ -571,9 +608,21 @@ def _extract_summary_stats(locals_dict: Dict[str, Any]) -> Dict[str, float]:
     for key, value in locals_dict.items():
         if isinstance(value, (int, float)):
             stats[key] = float(value)
-        elif isinstance(value, pd.Series) and value.dtype in ['int64', 'float64']:
-            stats[f"{key}_mean"] = float(value.mean())
-            stats[f"{key}_std"] = float(value.std())
+        elif isinstance(value, pd.Series) and pd.api.types.is_numeric_dtype(value):
+            try:
+                stats[f"{key}_mean"] = float(value.mean())
+                stats[f"{key}_std"] = float(value.std())
+            except:
+                pass
+        elif isinstance(value, pd.DataFrame):
+            # Convert DataFrame to summary statistics
+            try:
+                numeric_cols = value.select_dtypes(include=[np.number]).columns
+                for col in numeric_cols[:5]:  # Limit to first 5 numeric columns
+                    stats[f"{key}_{col}_mean"] = float(value[col].mean())
+                    stats[f"{key}_{col}_std"] = float(value[col].std())
+            except:
+                stats[f"{key}_shape"] = f"{value.shape[0]}x{value.shape[1]}"
     
     return convert_numpy_types(stats)
 

@@ -468,9 +468,16 @@ class PyDataAssistant {
     handleQueryResponse(response) {
         const { response_type, data, message } = response;
         
+        console.log('=== handleQueryResponse ===');
+        console.log('Full response:', response);
+        console.log('Response type:', response_type);
+        console.log('Data object:', data);
+        console.log('Message:', message);
+        
         // Handle different response types
         switch (response_type) {
             case 'plot':
+                console.log('Handling plot response');
                 this.addPlotMessage(data, message);
                 break;
             case 'statistics':
@@ -555,9 +562,62 @@ class PyDataAssistant {
         
         // Render the Plotly chart
         if (plotData.data && typeof Plotly !== 'undefined') {
-            Plotly.newPlot(plotId, plotData.data.data, plotData.data.layout, plotData.data.config);
+            console.log('Full plotData:', plotData);
+            console.log('plotData.data:', plotData.data);
+            console.log('plotData.data.data:', plotData.data.data);
+            
+            // plotData.data already contains the full Plotly JSON structure {data, layout, config}
+            const chartData = plotData.data.data || [];
+            const chartLayout = plotData.data.layout || {};
+            const chartConfig = plotData.data.config || {responsive: true, displayModeBar: true};
+            
+            // CRITICAL FIX: Decode binary encoded data
+            // Plotly's to_json() sometimes encodes numpy arrays as binary data
+            if (chartData && chartData.length > 0) {
+                chartData.forEach(trace => {
+                    // Fix binary encoded values (common issue with numpy arrays)
+                    if (trace.values && typeof trace.values === 'object' && trace.values.bdata) {
+                        console.log('Decoding binary values data');
+                        trace.values = this.decodeBinaryData(trace.values);
+                    }
+                    
+                    // Fix binary encoded labels
+                    if (trace.labels && typeof trace.labels === 'object' && trace.labels.bdata) {
+                        console.log('Decoding binary labels data');
+                        trace.labels = this.decodeBinaryData(trace.labels);
+                    }
+                    
+                    // Fix binary encoded x/y data
+                    if (trace.x && typeof trace.x === 'object' && trace.x.bdata) {
+                        trace.x = this.decodeBinaryData(trace.x);
+                    }
+                    if (trace.y && typeof trace.y === 'object' && trace.y.bdata) {
+                        trace.y = this.decodeBinaryData(trace.y);
+                    }
+                    
+                    // Remove problematic hovertemplate if it references customdata
+                    if (trace.hovertemplate && trace.hovertemplate.includes('customdata')) {
+                        console.log('Removing problematic hovertemplate:', trace.hovertemplate);
+                        delete trace.hovertemplate;
+                    }
+                    
+                    // For pie charts, log trace data for debugging
+                    if (trace.type === 'pie') {
+                        console.log('Pie chart trace after decoding:', {
+                            labels: Array.isArray(trace.labels) ? trace.labels.slice(0, 5) : trace.labels,
+                            values: Array.isArray(trace.values) ? trace.values.slice(0, 5) : trace.values,
+                            labelsType: typeof trace.labels,
+                            valuesType: typeof trace.values
+                        });
+                    }
+                });
+            }
+            
+            console.log('Rendering chart with:', {chartData, chartLayout, chartConfig});
+            
+            Plotly.newPlot(plotId, chartData, chartLayout, chartConfig);
         } else {
-            // Fallback if Plotly is not available
+            console.error('Plotly not available or no data:', {plotData, hasPlotly: typeof Plotly !== 'undefined'});
             document.getElementById(plotId).innerHTML = '<p>⚠️ Chart data received but Plotly.js not loaded. Please refresh the page.</p>';
         }
         
@@ -653,6 +713,59 @@ class PyDataAssistant {
     }
 
     // Utility Functions
+    decodeBinaryData(binaryObj) {
+        /**
+         * Decode Plotly's binary encoded data format
+         * Plotly's to_json() encodes numpy arrays as {dtype: 'f8', bdata: 'base64...'}
+         */
+        if (!binaryObj || !binaryObj.bdata) {
+            return binaryObj;
+        }
+        
+        try {
+            const dtype = binaryObj.dtype;
+            const base64Data = binaryObj.bdata;
+            
+            // Decode base64 to binary
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // Convert based on dtype
+            let result = [];
+            if (dtype === 'f8') {
+                // Float64 (8 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 8) {
+                    result.push(view.getFloat64(i, true)); // true = little-endian
+                }
+            } else if (dtype === 'f4') {
+                // Float32 (4 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 4) {
+                    result.push(view.getFloat32(i, true));
+                }
+            } else if (dtype === 'i4') {
+                // Int32 (4 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 4) {
+                    result.push(view.getInt32(i, true));
+                }
+            } else {
+                console.warn('Unknown dtype:', dtype, '- returning original');
+                return binaryObj;
+            }
+            
+            console.log(`Decoded ${result.length} values from binary data (dtype: ${dtype})`);
+            return result;
+        } catch (error) {
+            console.error('Error decoding binary data:', error);
+            return binaryObj;
+        }
+    }
+    
     formatBytes(bytes) {
         if (!bytes || bytes === 0) return '0 B';
         const k = 1024;
