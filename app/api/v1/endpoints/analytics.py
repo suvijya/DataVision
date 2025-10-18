@@ -78,10 +78,17 @@ async def perform_regression(request: RegressionRequest):
     try:
         # Get session
         session = get_session(request.session_id)
+<<<<<<< Updated upstream
         if not session or session.dataframe is None:
             raise HTTPException(status_code=404, detail="Session not found or no data loaded")
         
         df = session.dataframe
+=======
+        if not session or session.df is None:
+            raise HTTPException(status_code=404, detail="Session not found or no data loaded")
+        
+        df = session.df
+>>>>>>> Stashed changes
         
         # Validate columns
         all_cols = [request.target_column] + request.feature_columns
@@ -145,10 +152,17 @@ async def perform_clustering(request: ClusteringRequest):
     try:
         # Get session
         session = get_session(request.session_id)
+<<<<<<< Updated upstream
         if not session or session.dataframe is None:
             raise HTTPException(status_code=404, detail="Session not found or no data loaded")
         
         df = session.dataframe
+=======
+        if not session or session.df is None:
+            raise HTTPException(status_code=404, detail="Session not found or no data loaded")
+        
+        df = session.df
+>>>>>>> Stashed changes
         
         # Validate columns
         missing_cols = [col for col in request.feature_columns if col not in df.columns]
@@ -209,10 +223,17 @@ async def perform_dimensionality_reduction(request: DimensionalityReductionReque
     try:
         # Get session
         session = get_session(request.session_id)
+<<<<<<< Updated upstream
         if not session or session.dataframe is None:
             raise HTTPException(status_code=404, detail="Session not found or no data loaded")
         
         df = session.dataframe
+=======
+        if not session or session.df is None:
+            raise HTTPException(status_code=404, detail="Session not found or no data loaded")
+        
+        df = session.df
+>>>>>>> Stashed changes
         
         # Validate columns
         missing_cols = [col for col in request.feature_columns if col not in df.columns]
@@ -272,10 +293,17 @@ async def detect_outliers(request: OutlierDetectionRequest):
     try:
         # Get session
         session = get_session(request.session_id)
+<<<<<<< Updated upstream
         if not session or session.dataframe is None:
             raise HTTPException(status_code=404, detail="Session not found or no data loaded")
         
         df = session.dataframe
+=======
+        if not session or session.df is None:
+            raise HTTPException(status_code=404, detail="Session not found or no data loaded")
+        
+        df = session.df
+>>>>>>> Stashed changes
         
         # Validate columns
         missing_cols = [col for col in request.feature_columns if col not in df.columns]
@@ -325,10 +353,17 @@ async def perform_statistical_test(request: StatisticalTestRequest):
     try:
         # Get session
         session = get_session(request.session_id)
+<<<<<<< Updated upstream
         if not session or session.dataframe is None:
             raise HTTPException(status_code=404, detail="Session not found or no data loaded")
         
         df = session.dataframe
+=======
+        if not session or session.df is None:
+            raise HTTPException(status_code=404, detail="Session not found or no data loaded")
+        
+        df = session.df
+>>>>>>> Stashed changes
         
         # Perform test based on type
         if request.test_type == "ttest":
