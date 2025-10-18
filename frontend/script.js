@@ -226,8 +226,151 @@ class PyDataAssistant {
         // Load initial tab (sample data)
         this.switchTab('sample');
         
+        // Show suggested queries in chat
+        this.showSuggestedQueries(preview);
+        
         // Scroll to preview
         this.previewSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    showSuggestedQueries(preview) {
+        if (!this.messages) return;
+        
+        const suggestions = this.generateSmartSuggestions(preview);
+        
+        if (suggestions.length === 0) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message assistant';
+        
+        let suggestionsHTML = `
+            <div class="message-avatar"><i class="fas fa-lightbulb"></i></div>
+            <div class="message-content">
+                <div class="suggested-queries">
+                    <h4><i class="fas fa-magic"></i> Suggested Queries</h4>
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary);">Click any suggestion to run it automatically:</p>
+                    <div class="suggestions-grid">
+        `;
+        
+        suggestions.forEach(suggestion => {
+            suggestionsHTML += `
+                <button class="suggestion-btn" onclick="window.pyDataAssistant.executeSuggestion('${suggestion.query.replace(/'/g, "\\'")}')">
+                    <i class="${suggestion.icon}"></i>
+                    <span>${suggestion.label}</span>
+                </button>
+            `;
+        });
+        
+        suggestionsHTML += `
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        messageDiv.innerHTML = suggestionsHTML;
+        this.messages.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
+    generateSmartSuggestions(preview) {
+        const suggestions = [];
+        const columns = preview.columns || [];
+        const dtypes = preview.dtypes || {};
+        
+        // Get numeric and categorical columns
+        const numericCols = columns.filter(col => 
+            dtypes[col] && (dtypes[col].includes('int') || dtypes[col].includes('float'))
+        );
+        const categoricalCols = columns.filter(col => 
+            dtypes[col] && dtypes[col].includes('object')
+        );
+        
+        // Data overview
+        suggestions.push({
+            icon: 'fas fa-eye',
+            label: 'Show dataset overview and summary',
+            query: 'Give me a comprehensive overview of this dataset including shape, columns, data types, and basic statistics'
+        });
+        
+        // Missing values if any exist
+        const hasMissing = preview.missing_values && 
+            Object.values(preview.missing_values).some(v => v > 0);
+        if (hasMissing) {
+            suggestions.push({
+                icon: 'fas fa-exclamation-triangle',
+                label: 'Analyze missing values',
+                query: 'Show me a detailed analysis of missing values in this dataset with visualizations'
+            });
+        }
+        
+        // Visualizations for numeric columns
+        if (numericCols.length > 0) {
+            const firstNumeric = numericCols[0];
+            suggestions.push({
+                icon: 'fas fa-chart-bar',
+                label: `Distribution of ${firstNumeric}`,
+                query: `Create a histogram showing the distribution of ${firstNumeric}`
+            });
+        }
+        
+        if (numericCols.length >= 2) {
+            suggestions.push({
+                icon: 'fas fa-project-diagram',
+                label: 'Correlation analysis',
+                query: 'Show me correlations between numeric columns with a heatmap'
+            });
+            
+            suggestions.push({
+                icon: 'fas fa-chart-scatter',
+                label: `${numericCols[0]} vs ${numericCols[1]}`,
+                query: `Create a scatter plot comparing ${numericCols[0]} and ${numericCols[1]}`
+            });
+        }
+        
+        // Categorical analysis
+        if (categoricalCols.length > 0 && numericCols.length > 0) {
+            const cat = categoricalCols[0];
+            const num = numericCols[0];
+            suggestions.push({
+                icon: 'fas fa-chart-pie',
+                label: `${cat} distribution`,
+                query: `Create a pie chart showing the distribution of ${cat}`
+            });
+            
+            suggestions.push({
+                icon: 'fas fa-chart-column',
+                label: `${num} by ${cat}`,
+                query: `Show me a bar chart of total ${num} grouped by ${cat}`
+            });
+        }
+        
+        // Statistical analysis
+        if (numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-calculator',
+                label: 'Statistical summary',
+                query: 'Provide detailed statistical summaries for all numeric columns'
+            });
+        }
+        
+        // Outlier detection
+        if (numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-search',
+                label: 'Detect outliers',
+                query: 'Identify and visualize outliers in the numeric columns'
+            });
+        }
+        
+        return suggestions.slice(0, 8); // Limit to 8 suggestions
+    }
+
+    executeSuggestion(query) {
+        if (!this.queryInput) return;
+        
+        this.queryInput.value = query;
+        this.updateCharCount();
+        this.sendQuery();
     }
 
     switchTab(tabName) {
@@ -249,6 +392,9 @@ class PyDataAssistant {
             case 'sample':
                 content = this.renderSampleData(preview.sample_data, preview.columns);
                 break;
+            case 'fulldata':
+                this.renderFullDataTab();
+                return; // Handle separately with async loading
             case 'overview':
                 content = this.renderOverview(preview);
                 break;
@@ -392,6 +538,96 @@ class PyDataAssistant {
 
         html += '</tbody></table></div></div>';
         return html;
+    }
+
+    async renderFullDataTab() {
+        if (!this.currentSessionId) return;
+        
+        this.tabContent.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading full dataset...</div>';
+        
+        try {
+            await this.loadFullData(1);
+        } catch (error) {
+            this.tabContent.innerHTML = `<p class="error-text">Error loading data: ${error.message}</p>`;
+        }
+    }
+
+    async loadFullData(page = 1, pageSize = 100) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/session/${this.currentSessionId}/data?page=${page}&page_size=${pageSize}`);
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to load data');
+            }
+            
+            this.renderFullDataTable(result, page, pageSize);
+        } catch (error) {
+            console.error('Error loading full data:', error);
+            this.tabContent.innerHTML = `<p class="error-text">❌ Error: ${error.message}</p>`;
+        }
+    }
+
+    renderFullDataTable(result, currentPage, pageSize) {
+        const { data, columns, pagination } = result;
+        
+        let html = '<div class="full-data-container">';
+        
+        // Pagination info
+        html += `
+            <div class="pagination-header">
+                <div class="pagination-info">
+                    Showing ${pagination.start_row}-${pagination.end_row} of ${pagination.total_rows.toLocaleString()} rows
+                </div>
+                <div class="pagination-controls">
+                    <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="window.pyDataAssistant.loadFullData(1, ${pageSize})">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                    <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="window.pyDataAssistant.loadFullData(${currentPage - 1}, ${pageSize})">
+                        <i class="fas fa-angle-left"></i> Prev
+                    </button>
+                    <span class="page-number">Page ${currentPage} of ${pagination.total_pages}</span>
+                    <button class="page-btn" ${currentPage === pagination.total_pages ? 'disabled' : ''} onclick="window.pyDataAssistant.loadFullData(${currentPage + 1}, ${pageSize})">
+                        Next <i class="fas fa-angle-right"></i>
+                    </button>
+                    <button class="page-btn" ${currentPage === pagination.total_pages ? 'disabled' : ''} onclick="window.pyDataAssistant.loadFullData(${pagination.total_pages}, ${pageSize})">
+                        <i class="fas fa-angle-double-right"></i>
+                    </button>
+                </div>
+                <div class="page-size-selector">
+                    <label>Rows per page:</label>
+                    <select onchange="window.pyDataAssistant.loadFullData(1, parseInt(this.value))">
+                        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                        <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+                        <option value="200" ${pageSize === 200 ? 'selected' : ''}>200</option>
+                        <option value="500" ${pageSize === 500 ? 'selected' : ''}>500</option>
+                    </select>
+                </div>
+            </div>
+        `;
+        
+        // Data table
+        html += '<div class="table-container scrollable-table"><table class="data-table full-data-table"><thead><tr>';
+        html += '<th class="row-index">#</th>';
+        columns.forEach(col => {
+            html += `<th>${col}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        data.forEach((row, idx) => {
+            const rowNum = pagination.start_row + idx;
+            html += `<tr><td class="row-index">${rowNum}</td>`;
+            columns.forEach(col => {
+                const value = row[col] !== null && row[col] !== undefined ? row[col] : '';
+                html += `<td>${this.truncateText(String(value), 100)}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        html += '</div>';
+        
+        this.tabContent.innerHTML = html;
     }
 
     renderInsights(preview) {
@@ -547,13 +783,16 @@ class PyDataAssistant {
         const plotId = `plot-${Date.now()}`;
         const title = plotData.title || 'Data Visualization';
         
+        // Format the message (insights) nicely
+        const formattedMessage = message ? this.formatAnalysisText(message) : '';
+        
         messageDiv.innerHTML = `
             <div class="message-avatar"><i class="fas fa-chart-bar"></i></div>
             <div class="message-content">
                 <div class="plot-container">
                     <h4>${title}</h4>
                     <div id="${plotId}" class="plot-area"></div>
-                    <p class="plot-message">${message}</p>
+                    ${formattedMessage ? `<div class="analysis-insights">${formattedMessage}</div>` : ''}
                 </div>
             </div>
         `;

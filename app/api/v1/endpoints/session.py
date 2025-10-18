@@ -289,3 +289,62 @@ async def delete_session(
                 "status_code": 500
             }
         )
+
+
+@router.get(
+    "/session/{session_id}/data",
+    summary="Get full dataset with pagination",
+    description="Retrieve the complete dataset with pagination support",
+    responses={
+        200: {"description": "Dataset retrieved successfully"},
+        404: {"model": ErrorResponse, "description": "Session not found"}
+    }
+)
+async def get_full_data(
+    session_id: str,
+    page: int = 1,
+    page_size: int = 100
+):
+    """
+    Returns paginated full dataset from the session.
+    """
+    try:
+        session = get_session_from_request(session_id)
+        df = session.dataframe
+        
+        # Calculate pagination
+        total_rows = len(df)
+        total_pages = (total_rows + page_size - 1) // page_size
+        start_idx = (page - 1) * page_size
+        end_idx = min(start_idx + page_size, total_rows)
+        
+        # Get paginated data
+        page_data = df.iloc[start_idx:end_idx].to_dict('records')
+        
+        return {
+            "session_id": session_id,
+            "data": convert_numpy_types(page_data),
+            "columns": list(df.columns),
+            "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_rows": total_rows,
+                "total_pages": total_pages,
+                "start_row": start_idx + 1,
+                "end_row": end_idx
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error retrieving data for session {session_id}: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "data_retrieval_error",
+                "message": str(e),
+                "status_code": 500
+            }
+        )
+

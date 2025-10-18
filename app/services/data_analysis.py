@@ -299,11 +299,13 @@ INSTRUCTIONS:
 2. Use pandas for data manipulation (df is the DataFrame variable)
 3. For visualizations, use plotly.express (px) or plotly.graph_objects (go)
 4. Format output text with clear headers, bullet points, and proper spacing
-5. DO NOT include import statements - all modules are pre-imported
-6. Available modules: pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
-7. For summaries: use clear section headers like "### Dataset Overview ###"
-8. For visualizations: create ONE figure per request and use fig.show() at the end
-9. IMPORTANT: Do NOT use customdata or hovertemplate in Plotly charts - use simple hover_data parameter only
+5. CRITICAL: DO NOT include ANY import statements - all modules are already imported (pd, np, px, go)
+6. CRITICAL: DO NOT use __import__, exec, eval, or any dynamic code execution
+7. Available modules: pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
+8. For summaries: use clear section headers like "### Dataset Overview ###"
+9. For visualizations: create ONE figure per request and use fig.show() at the end
+10. IMPORTANT: Do NOT use customdata or hovertemplate in Plotly charts - use simple hover_data parameter only
+11. For simple queries (overview, describe, summary), just use print() - NO visualization needed
 
 FORMATTING GUIDELINES:
 - Use "###" for main section headers
@@ -318,29 +320,55 @@ VISUALIZATION GUIDELINES:
 - For scatter plots: Use px.scatter(df, x='column', y='column', title='Title')
 - DO NOT manually set hovertemplate or customdata
 - Let Plotly handle hover data automatically
+- After creating visualizations, print a clear analysis of what the chart shows
 
 RESPONSE FORMAT:
 Provide your analysis and then include the Python code in markdown code blocks like this:
 
+**For overview/summary queries (NO visualization):**
 ```python
-# Analysis code (NO IMPORTS NEEDED)
-# Available: pd, np, px, go, df
-
-# For summaries - format output clearly
+# NO IMPORTS - Just use print() and pandas methods
 print("### Dataset Overview ###")
+print("")
 print(f"Shape: {{df.shape[0]:,}} rows × {{df.shape[1]}} columns")
 print("")
+print("Columns:", ', '.join(df.columns))
+print("")
+print("### Data Types ###")
+print(df.dtypes.to_string())
+print("")
+print("### Summary Statistics ###")
+print(df.describe().to_string())
+```
 
-# For visualizations - create ONE chart
+**For visualization queries:**
+```python
+# NO IMPORTS - modules already available: pd, np, px, go, df
+# Create ONE chart
 fig = px.histogram(df, x='column_name', title='Clear Title')
 fig.show()  # This MUST be the last line for visualizations
+
+# IMPORTANT: After fig.show(), print insights about the visualization
+print("")
+print("### 📊 Analysis Insights ###")
+print("")
+print("**What this chart reveals:**")
+print("• Key finding 1 from the visualization")
+print("• Key finding 2 about the data distribution")
+print("• Notable patterns or trends observed")
+print("")
+print("**Recommendations:**")
+print("• Suggestion 1 for data quality or next steps")
+print("• Suggestion 2 for further analysis if needed")
 ```
 
 Focus on:
-- Clear insights and findings
-- Proper data visualization if requested
+- Clear insights and findings after EVERY visualization
+- What patterns, trends, or anomalies are visible
+- Data quality issues if any (outliers, missing values, imbalanced data)
+- Actionable recommendations for the user
 - Statistical analysis when relevant
-- Handling missing values appropriately
+
 """
     
     return prompt
