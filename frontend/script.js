@@ -272,6 +272,9 @@ class PyDataAssistant {
             case 'analytics':
                 content = this.renderAnalyticsPanel();
                 break;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             default:
                 content = '<p>Tab content not implemented yet.</p>';
@@ -869,6 +872,9 @@ class PyDataAssistant {
         return html;
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     showChat() {
         if (!this.chatSection) return;
