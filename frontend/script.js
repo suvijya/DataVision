@@ -264,6 +264,15 @@ class PyDataAssistant {
             case 'insights':
                 content = this.renderInsights(preview);
                 break;
+<<<<<<< Updated upstream
+=======
+            case 'chartgallery':
+                content = this.renderChartGallery();
+                break;
+            case 'analytics':
+                content = this.renderAnalyticsPanel();
+                break;
+>>>>>>> Stashed changes
             default:
                 content = '<p>Tab content not implemented yet.</p>';
         }
@@ -420,6 +429,447 @@ class PyDataAssistant {
         `;
     }
 
+<<<<<<< Updated upstream
+=======
+    renderChartGallery() {
+        const chartTypes = [
+            {
+                category: 'Distribution & Comparison',
+                charts: [
+                    { name: 'Bar Chart', icon: 'fa-chart-bar', description: 'Compare categories or values across groups', example: 'Show me a bar chart of sales by region' },
+                    { name: 'Histogram', icon: 'fa-chart-area', description: 'Visualize data distribution and frequency', example: 'Create a histogram of age distribution' },
+                    { name: 'Box Plot', icon: 'fa-box', description: 'Display quartiles, median, and outliers', example: 'Show box plot of prices by category' },
+                    { name: 'Violin Plot', icon: 'fa-music', description: 'Combine box plot with kernel density', example: 'Create violin plot comparing salaries across departments' }
+                ]
+            },
+            {
+                category: 'Relationships & Correlations',
+                charts: [
+                    { name: 'Scatter Plot', icon: 'fa-braille', description: 'Show relationship between two variables', example: 'Scatter plot of age vs income' },
+                    { name: 'Bubble Chart', icon: 'fa-circle', description: 'Scatter plot with size dimension', example: 'Show population vs GDP with bubble sizes for area' },
+                    { name: 'Heatmap', icon: 'fa-th', description: 'Display correlations in a color matrix', example: 'Create a correlation heatmap of all numeric columns' },
+                    { name: 'Line Chart', icon: 'fa-chart-line', description: 'Show trends over time or sequences', example: 'Line chart of monthly revenue over time' }
+                ]
+            },
+            {
+                category: 'Proportions & Parts',
+                charts: [
+                    { name: 'Pie Chart', icon: 'fa-chart-pie', description: 'Show percentage breakdown of categories', example: 'Pie chart of market share by product' },
+                    { name: 'Donut Chart', icon: 'fa-circle-notch', description: 'Pie chart with a center hole', example: 'Donut chart showing expense categories' },
+                    { name: 'Sunburst', icon: 'fa-sun', description: 'Hierarchical data in concentric circles', example: 'Sunburst chart of sales by region and product' },
+                    { name: 'Treemap', icon: 'fa-th-large', description: 'Nested rectangles for hierarchical data', example: 'Treemap of budget allocation by department' }
+                ]
+            },
+            {
+                category: 'Trends & Time Series',
+                charts: [
+                    { name: 'Area Chart', icon: 'fa-area-chart', description: 'Show cumulative totals over time', example: 'Area chart of cumulative sales' },
+                    { name: 'Line Chart', icon: 'fa-chart-line', description: 'Track changes over continuous intervals', example: 'Monthly temperature trends' },
+                    { name: 'Candlestick', icon: 'fa-chart-candlestick', description: 'Financial data (open, high, low, close)', example: 'Stock price movements over time' }
+                ]
+            },
+            {
+                category: 'Advanced & Specialized',
+                charts: [
+                    { name: '3D Scatter', icon: 'fa-cube', description: 'Three-dimensional scatter plot', example: 'Show 3D relationship between height, weight, and age' },
+                    { name: 'Funnel Chart', icon: 'fa-filter', description: 'Visualize progressive reduction in stages', example: 'Sales funnel from leads to conversions' },
+                    { name: 'Waterfall', icon: 'fa-water', description: 'Show cumulative effect of sequential values', example: 'Profit breakdown from revenue to net income' },
+                    { name: 'Polar Chart', icon: 'fa-circle-dot', description: 'Circular coordinate system visualization', example: 'Wind direction and speed distribution' }
+                ]
+            },
+            {
+                category: 'Statistical & Analysis',
+                charts: [
+                    { name: 'Density Plot', icon: 'fa-wave-square', description: 'Smooth distribution estimate', example: 'Density plot of test scores' },
+                    { name: 'Strip Plot', icon: 'fa-grip-lines', description: 'Show individual data points by category', example: 'Strip plot of scores by class' },
+                    { name: 'Parallel Coordinates', icon: 'fa-stream', description: 'Multivariate data visualization', example: 'Compare multiple features across samples' },
+                    { name: 'Contour Plot', icon: 'fa-mountain', description: 'Show 3D surface on 2D plane', example: 'Elevation contours or probability density' }
+                ]
+            }
+        ];
+
+        let html = '<div class="chart-gallery-content">';
+        html += '<h3><i class="fas fa-palette"></i> Available Visualization Types</h3>';
+        html += '<p class="gallery-intro">Choose from 25+ chart types to analyze and visualize your data. Click any example to try it!</p>';
+        
+        chartTypes.forEach(category => {
+            html += `<div class="chart-category">`;
+            html += `<h4><i class="fas fa-folder-open"></i> ${category.category}</h4>`;
+            html += `<div class="charts-grid">`;
+            
+            category.charts.forEach(chart => {
+                html += `
+                    <div class="chart-card">
+                        <div class="chart-icon">
+                            <i class="fas ${chart.icon}"></i>
+                        </div>
+                        <div class="chart-info">
+                            <h5>${chart.name}</h5>
+                            <p class="chart-description">${chart.description}</p>
+                            <div class="chart-example">
+                                <button class="try-chart-btn" onclick="window.pyDataAssistant.tryChartExample('${chart.example.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-play"></i> Try: "${chart.example}"
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+        });
+        
+        html += '<div class="chart-tips">';
+        html += '<h4><i class="fas fa-lightbulb"></i> Pro Tips</h4>';
+        html += '<ul>';
+        html += '<li><strong>Be specific:</strong> Include column names in your query for better results</li>';
+        html += '<li><strong>Multiple dimensions:</strong> Use "color=column" or "size=column" for richer visualizations</li>';
+        html += '<li><strong>Time series:</strong> Mention time-based columns for automatic time series handling</li>';
+        html += '<li><strong>Custom queries:</strong> Ask naturally - "Show me X grouped by Y with Z as colors"</li>';
+        html += '</ul>';
+        html += '</div>';
+        
+        html += '</div>';
+        return html;
+    }
+
+    tryChartExample(exampleQuery) {
+        if (!this.queryInput) return;
+        this.queryInput.value = exampleQuery;
+        this.updateCharCount();
+        // Scroll to chat input
+        this.queryInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.queryInput.focus();
+    }
+
+    renderAnalyticsPanel() {
+        const preview = this.currentDataPreview;
+        if (!preview) return '<p>No data loaded</p>';
+        
+        const numericCols = preview.columns.filter(col => 
+            preview.dtypes[col] && (preview.dtypes[col].includes('int') || preview.dtypes[col].includes('float'))
+        );
+        const categoricalCols = preview.columns.filter(col => 
+            preview.dtypes[col] && preview.dtypes[col].includes('object')
+        );
+        const allCols = preview.columns || [];
+        
+        let html = `
+            <div class="analytics-panel">
+                <div class="analytics-header">
+                    <h3><i class="fas fa-brain"></i> Advanced Analytics Engine</h3>
+                    <p class="analytics-intro">Perform machine learning, statistical tests, and advanced data analysis</p>
+                </div>
+                
+                <!-- Analytics Categories -->
+                <div class="analytics-categories">
+                    <!-- Predictive Analytics -->
+                    <div class="analytics-card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-chart-line"></i> Predictive Analytics</h4>
+                            <span class="badge">ML</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="analytics-method">
+                                <h5>Linear Regression</h5>
+                                <p>Predict continuous values based on features</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Target Column:</label>
+                                        <select id="linearRegressionTarget" class="form-select">
+                                            <option value="">Select target...</option>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="linearRegressionFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                        <small>Hold Ctrl/Cmd to select multiple</small>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runLinearRegression()">
+                                        <i class="fas fa-play"></i> Run Linear Regression
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="analytics-method">
+                                <h5>Logistic Regression</h5>
+                                <p>Binary or multiclass classification</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Target Column:</label>
+                                        <select id="logisticRegressionTarget" class="form-select">
+                                            <option value="">Select target...</option>
+                                            ${allCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="logisticRegressionFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runLogisticRegression()">
+                                        <i class="fas fa-play"></i> Run Logistic Regression
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Clustering -->
+                    <div class="analytics-card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-project-diagram"></i> Clustering Analysis</h4>
+                            <span class="badge">Unsupervised</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="analytics-method">
+                                <h5>K-Means Clustering</h5>
+                                <p>Partition data into k clusters</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="kmeansFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Number of Clusters:</label>
+                                        <input type="number" id="kmeansNClusters" class="form-input" value="3" min="2" max="10">
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runKMeans()">
+                                        <i class="fas fa-play"></i> Run K-Means
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="analytics-method">
+                                <h5>DBSCAN Clustering</h5>
+                                <p>Density-based clustering (finds arbitrary shapes)</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="dbscanFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Epsilon:</label>
+                                            <input type="number" id="dbscanEps" class="form-input" value="0.5" step="0.1" min="0.1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Min Samples:</label>
+                                            <input type="number" id="dbscanMinSamples" class="form-input" value="5" min="2">
+                                        </div>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runDBSCAN()">
+                                        <i class="fas fa-play"></i> Run DBSCAN
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dimensionality Reduction -->
+                    <div class="analytics-card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-compress-arrows-alt"></i> Dimensionality Reduction</h4>
+                            <span class="badge">Visualization</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="analytics-method">
+                                <h5>PCA (Principal Component Analysis)</h5>
+                                <p>Linear dimensionality reduction</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="pcaFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Components:</label>
+                                        <select id="pcaComponents" class="form-select">
+                                            <option value="2" selected>2D</option>
+                                            <option value="3">3D</option>
+                                        </select>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runPCA()">
+                                        <i class="fas fa-play"></i> Run PCA
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="analytics-method">
+                                <h5>t-SNE</h5>
+                                <p>Non-linear dimensionality reduction for visualization</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="tsneFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Components:</label>
+                                            <select id="tsneComponents" class="form-select">
+                                                <option value="2" selected>2D</option>
+                                                <option value="3">3D</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Perplexity:</label>
+                                            <input type="number" id="tsnePerplexity" class="form-input" value="30" min="5" max="50">
+                                        </div>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runTSNE()">
+                                        <i class="fas fa-play"></i> Run t-SNE
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Outlier Detection -->
+                    <div class="analytics-card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-exclamation-triangle"></i> Outlier Detection</h4>
+                            <span class="badge">Anomaly</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="analytics-method">
+                                <h5>Isolation Forest</h5>
+                                <p>Detect outliers using ensemble method</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Feature Columns:</label>
+                                        <select id="outlierFeatures" class="form-select" multiple>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Contamination (expected % of outliers):</label>
+                                        <input type="number" id="outlierContamination" class="form-input" value="0.1" step="0.01" min="0.01" max="0.5">
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runOutlierDetection()">
+                                        <i class="fas fa-play"></i> Detect Outliers
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistical Tests -->
+                    <div class="analytics-card">
+                        <div class="card-header">
+                            <h4><i class="fas fa-calculator"></i> Statistical Tests</h4>
+                            <span class="badge">Inference</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="analytics-method">
+                                <h5>T-Test</h5>
+                                <p>Compare means of two groups</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Group Column:</label>
+                                        <select id="ttestGroupCol" class="form-select">
+                                            <option value="">Select column...</option>
+                                            ${categoricalCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Value Column:</label>
+                                        <select id="ttestValueCol" class="form-select">
+                                            <option value="">Select column...</option>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runTTest()">
+                                        <i class="fas fa-play"></i> Run T-Test
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="analytics-method">
+                                <h5>ANOVA</h5>
+                                <p>Compare means of 3+ groups</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Group Column:</label>
+                                        <select id="anovaGroupCol" class="form-select">
+                                            <option value="">Select column...</option>
+                                            ${categoricalCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Value Column:</label>
+                                        <select id="anovaValueCol" class="form-select">
+                                            <option value="">Select column...</option>
+                                            ${numericCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runANOVA()">
+                                        <i class="fas fa-play"></i> Run ANOVA
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="analytics-method">
+                                <h5>Chi-Square Test</h5>
+                                <p>Test independence of categorical variables</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Column 1:</label>
+                                        <select id="chiSquareCol1" class="form-select">
+                                            <option value="">Select column...</option>
+                                            ${categoricalCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Column 2:</label>
+                                        <select id="chiSquareCol2" class="form-select">
+                                            <option value="">Select column...</option>
+                                            ${categoricalCols.map(col => `<option value="${col}">${col}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runChiSquare()">
+                                        <i class="fas fa-play"></i> Run Chi-Square
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="analytics-method">
+                                <h5>Correlation Analysis</h5>
+                                <p>Analyze relationships between numeric variables</p>
+                                <div class="method-controls">
+                                    <div class="form-group">
+                                        <label>Method:</label>
+                                        <select id="correlationMethod" class="form-select">
+                                            <option value="pearson" selected>Pearson</option>
+                                            <option value="spearman">Spearman</option>
+                                            <option value="kendall">Kendall</option>
+                                        </select>
+                                    </div>
+                                    <button class="analytics-btn primary" onclick="window.pyDataAssistant.runCorrelation()">
+                                        <i class="fas fa-play"></i> Run Correlation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return html;
+    }
+
+>>>>>>> Stashed changes
     showChat() {
         if (!this.chatSection) return;
         
@@ -1010,6 +1460,522 @@ class PyDataAssistant {
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength - 3) + '...';
     }
+<<<<<<< Updated upstream
+=======
+
+    // Settings Management
+    openSettings() {
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+            this.loadSettings();
+            modal.style.display = 'flex';
+        }
+    }
+
+    closeSettings() {
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    loadSettings() {
+        // Load saved settings from localStorage
+        const settings = JSON.parse(localStorage.getItem('pydataSettings') || '{}');
+        
+        if (settings.theme) document.getElementById('themeSelect').value = settings.theme;
+        if (settings.fontSize) document.getElementById('fontSizeSelect').value = settings.fontSize;
+        if (settings.chartTheme) document.getElementById('chartThemeSelect').value = settings.chartTheme;
+        if (settings.maxRowsDisplay) document.getElementById('maxRowsDisplay').value = settings.maxRowsDisplay;
+        if (settings.responseStyle) document.getElementById('responseStyle').value = settings.responseStyle;
+        
+        if (settings.autoRenderCharts !== undefined) document.getElementById('autoRenderCharts').checked = settings.autoRenderCharts;
+        if (settings.showDataLabels !== undefined) document.getElementById('showDataLabels').checked = settings.showDataLabels;
+        if (settings.cacheResults !== undefined) document.getElementById('cacheResults').checked = settings.cacheResults;
+        if (settings.showCodeBlocks !== undefined) document.getElementById('showCodeBlocks').checked = settings.showCodeBlocks;
+        if (settings.autoSuggestions !== undefined) document.getElementById('autoSuggestions').checked = settings.autoSuggestions;
+    }
+
+    saveSettings() {
+        const settings = {
+            theme: document.getElementById('themeSelect').value,
+            fontSize: document.getElementById('fontSizeSelect').value,
+            chartTheme: document.getElementById('chartThemeSelect').value,
+            maxRowsDisplay: document.getElementById('maxRowsDisplay').value,
+            responseStyle: document.getElementById('responseStyle').value,
+            autoRenderCharts: document.getElementById('autoRenderCharts').checked,
+            showDataLabels: document.getElementById('showDataLabels').checked,
+            cacheResults: document.getElementById('cacheResults').checked,
+            showCodeBlocks: document.getElementById('showCodeBlocks').checked,
+            autoSuggestions: document.getElementById('autoSuggestions').checked,
+            anonymizeData: document.getElementById('anonymizeData').checked
+        };
+        
+        localStorage.setItem('pydataSettings', JSON.stringify(settings));
+        
+        // Apply theme immediately
+        this.applyTheme(settings.theme);
+        
+        // Apply font size
+        document.documentElement.style.fontSize = settings.fontSize === 'small' ? '14px' : 
+                                                    settings.fontSize === 'large' ? '18px' : '16px';
+        
+        this.closeSettings();
+        this.showNotification('Settings saved successfully!', 'success');
+    }
+
+    resetSettings() {
+        if (confirm('Are you sure you want to reset all settings to default?')) {
+            localStorage.removeItem('pydataSettings');
+            this.loadSettings();
+            this.showNotification('Settings reset to default', 'info');
+        }
+    }
+
+    applyTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark-theme');
+        } else if (theme === 'light') {
+            document.body.classList.remove('dark-theme');
+        } else if (theme === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.body.classList.toggle('dark-theme', prefersDark);
+        }
+    }
+
+    clearAllData() {
+        if (confirm('⚠️ This will delete all session data and cannot be undone. Continue?')) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    // Export Data
+    async exportData() {
+        if (!this.currentSessionId || !this.currentDataPreview) {
+            this.showNotification('No data available to export', 'error');
+            return;
+        }
+
+        try {
+            this.showLoading('Preparing export...');
+            
+            // Fetch full dataset
+            const response = await fetch(`${this.apiBaseUrl}/session/${this.currentSessionId}/data?page=1&page_size=999999`);
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to fetch data');
+            }
+
+            // Convert to CSV
+            const csv = this.convertToCSV(result.data, result.columns);
+            
+            // Download
+            this.downloadFile(csv, `pydata-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+            
+            this.hideLoading();
+            this.showNotification('Data exported successfully!', 'success');
+        } catch (error) {
+            this.hideLoading();
+            this.showNotification(`Export failed: ${error.message}`, 'error');
+            console.error('Export error:', error);
+        }
+    }
+
+    convertToCSV(data, columns) {
+        if (!data || data.length === 0) return '';
+        
+        // Header row
+        let csv = columns.map(col => `"${col}"`).join(',') + '\n';
+        
+        // Data rows
+        data.forEach(row => {
+            const values = columns.map(col => {
+                let value = row[col];
+                if (value === null || value === undefined) value = '';
+                // Escape quotes and wrap in quotes if needed
+                value = String(value).replace(/"/g, '""');
+                if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                    value = `"${value}"`;
+                }
+                return value;
+            });
+            csv += values.join(',') + '\n';
+        });
+        
+        return csv;
+    }
+
+    
+    // ==================== ADVANCED ANALYTICS METHODS ====================
+    
+    async runLinearRegression() {
+        const target = document.getElementById('linearRegressionTarget').value;
+        const featuresSelect = document.getElementById('linearRegressionFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        
+        if (!target || features.length === 0) {
+            this.showNotification('Please select target and at least one feature column', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('regression', {
+            session_id: this.currentSessionId,
+            target_column: target,
+            feature_columns: features,
+            model_type: 'linear'
+        });
+    }
+    
+    async runLogisticRegression() {
+        const target = document.getElementById('logisticRegressionTarget').value;
+        const featuresSelect = document.getElementById('logisticRegressionFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        
+        if (!target || features.length === 0) {
+            this.showNotification('Please select target and at least one feature column', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('regression', {
+            session_id: this.currentSessionId,
+            target_column: target,
+            feature_columns: features,
+            model_type: 'logistic'
+        });
+    }
+    
+    async runKMeans() {
+        const featuresSelect = document.getElementById('kmeansFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        const nClusters = parseInt(document.getElementById('kmeansNClusters').value);
+        
+        if (features.length === 0) {
+            this.showNotification('Please select at least one feature column', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('clustering', {
+            session_id: this.currentSessionId,
+            feature_columns: features,
+            algorithm: 'kmeans',
+            n_clusters: nClusters
+        });
+    }
+    
+    async runDBSCAN() {
+        const featuresSelect = document.getElementById('dbscanFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        const eps = parseFloat(document.getElementById('dbscanEps').value);
+        const minSamples = parseInt(document.getElementById('dbscanMinSamples').value);
+        
+        if (features.length === 0) {
+            this.showNotification('Please select at least one feature column', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('clustering', {
+            session_id: this.currentSessionId,
+            feature_columns: features,
+            algorithm: 'dbscan',
+            eps: eps,
+            min_samples: minSamples
+        });
+    }
+    
+    async runPCA() {
+        const featuresSelect = document.getElementById('pcaFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        const nComponents = parseInt(document.getElementById('pcaComponents').value);
+        
+        if (features.length < 2) {
+            this.showNotification('Please select at least 2 feature columns', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('dimensionality-reduction', {
+            session_id: this.currentSessionId,
+            feature_columns: features,
+            algorithm: 'pca',
+            n_components: nComponents
+        });
+    }
+    
+    async runTSNE() {
+        const featuresSelect = document.getElementById('tsneFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        const nComponents = parseInt(document.getElementById('tsneComponents').value);
+        const perplexity = parseInt(document.getElementById('tsnePerplexity').value);
+        
+        if (features.length < 2) {
+            this.showNotification('Please select at least 2 feature columns', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('dimensionality-reduction', {
+            session_id: this.currentSessionId,
+            feature_columns: features,
+            algorithm: 'tsne',
+            n_components: nComponents,
+            perplexity: perplexity
+        });
+    }
+    
+    async runOutlierDetection() {
+        const featuresSelect = document.getElementById('outlierFeatures');
+        const features = Array.from(featuresSelect.selectedOptions).map(opt => opt.value);
+        const contamination = parseFloat(document.getElementById('outlierContamination').value);
+        
+        if (features.length === 0) {
+            this.showNotification('Please select at least one feature column', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('outliers', {
+            session_id: this.currentSessionId,
+            feature_columns: features,
+            contamination: contamination
+        });
+    }
+    
+    async runTTest() {
+        const groupCol = document.getElementById('ttestGroupCol').value;
+        const valueCol = document.getElementById('ttestValueCol').value;
+        
+        if (!groupCol || !valueCol) {
+            this.showNotification('Please select both group and value columns', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('statistical-test', {
+            session_id: this.currentSessionId,
+            test_type: 'ttest',
+            group_column: groupCol,
+            value_column: valueCol
+        });
+    }
+    
+    async runANOVA() {
+        const groupCol = document.getElementById('anovaGroupCol').value;
+        const valueCol = document.getElementById('anovaValueCol').value;
+        
+        if (!groupCol || !valueCol) {
+            this.showNotification('Please select both group and value columns', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('statistical-test', {
+            session_id: this.currentSessionId,
+            test_type: 'anova',
+            group_column: groupCol,
+            value_column: valueCol
+        });
+    }
+    
+    async runChiSquare() {
+        const col1 = document.getElementById('chiSquareCol1').value;
+        const col2 = document.getElementById('chiSquareCol2').value;
+        
+        if (!col1 || !col2) {
+            this.showNotification('Please select both columns', 'error');
+            return;
+        }
+        
+        await this.runAnalytics('statistical-test', {
+            session_id: this.currentSessionId,
+            test_type: 'chi_square',
+            column1: col1,
+            column2: col2
+        });
+    }
+    
+    async runCorrelation() {
+        const method = document.getElementById('correlationMethod').value;
+        
+        await this.runAnalytics('statistical-test', {
+            session_id: this.currentSessionId,
+            test_type: 'correlation',
+            method: method
+        });
+    }
+    
+    async runAnalytics(endpoint, requestData) {
+        this.showLoading(`Running ${endpoint} analysis...`);
+        
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/analytics/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.detail || errorData.message || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText || errorMessage;
+                }
+                throw new Error(errorMessage);
+            }
+            
+            const result = await response.json();
+            this.hideLoading();
+            
+            // Display results in chat
+            this.displayAnalyticsResult(result);
+            
+            // Show success notification
+            this.showNotification(result.message || 'Analysis completed successfully', 'success');
+            
+            // Scroll to chat to see results
+            if (this.chatSection) {
+                this.chatSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+        } catch (error) {
+            this.hideLoading();
+            console.error('Analytics error:', error);
+            this.showNotification(`Analysis failed: ${error.message}`, 'error');
+            this.addMessage('assistant', `❌ Analysis failed: ${error.message}`);
+        }
+    }
+    
+    displayAnalyticsResult(result) {
+        if (!result.success) {
+            this.addMessage('assistant', `❌ ${result.message}`);
+            return;
+        }
+        
+        const data = result.data;
+        
+        // Format message with key metrics
+        let message = `### 📊 ${data.algorithm || data.test || data.model_type || 'Analysis'} Results\n\n`;
+        
+        // Add metrics
+        if (data.metrics) {
+            message += '**Metrics:**\n';
+            for (const [key, value] of Object.entries(data.metrics)) {
+                if (typeof value === 'number') {
+                    message += `• ${key.replace(/_/g, ' ')}: ${value.toFixed(4)}\n`;
+                } else {
+                    message += `• ${key.replace(/_/g, ' ')}: ${value}\n`;
+                }
+            }
+            message += '\n';
+        }
+        
+        // Add interpretation if available
+        if (data.interpretation) {
+            message += `**Interpretation:**\n${data.interpretation}\n\n`;
+        }
+        
+        // Add summary info
+        if (data.n_clusters !== undefined) {
+            message += `**Found ${data.n_clusters} clusters**\n\n`;
+        }
+        
+        if (data.n_outliers !== undefined) {
+            message += `**Detected ${data.n_outliers} outliers (${data.outlier_percentage})**\n\n`;
+        }
+        
+        if (data.explained_variance_ratio) {
+            message += `**Explained Variance:**\n`;
+            data.explained_variance_ratio.forEach((v, i) => {
+                message += `• PC${i+1}: ${(v * 100).toFixed(2)}%\n`;
+            });
+            message += `\n**Total: ${data.total_variance_explained}**\n\n`;
+        }
+        
+        // Add cluster sizes
+        if (data.cluster_sizes) {
+            message += '**Cluster Sizes:**\n';
+            for (const [cluster, info] of Object.entries(data.cluster_sizes)) {
+                message += `• ${cluster}: ${info.size} samples (${info.percentage})\n`;
+            }
+            message += '\n';
+        }
+        
+        // Add group statistics
+        if (data.group_statistics) {
+            message += '**Group Statistics:**\n';
+            for (const [group, stats] of Object.entries(data.group_statistics)) {
+                message += `\n**${group}:**\n`;
+                for (const [key, value] of Object.entries(stats)) {
+                    if (typeof value === 'number') {
+                        message += `  • ${key}: ${value.toFixed(4)}\n`;
+                    } else {
+                        message += `  • ${key}: ${value}\n`;
+                    }
+                }
+            }
+            message += '\n';
+        }
+        
+        // Add coefficients for regression
+        if (data.coefficients) {
+            message += '**Feature Coefficients:**\n';
+            for (const [feature, coef] of Object.entries(data.coefficients)) {
+                message += `• ${feature}: ${coef.toFixed(4)}\n`;
+            }
+            message += '\n';
+        }
+        
+        // Add top correlations
+        if (data.top_correlations) {
+            message += '**Top 5 Correlations:**\n';
+            data.top_correlations.slice(0, 5).forEach((corr, i) => {
+                message += `${i+1}. ${corr.var1} ↔ ${corr.var2}: ${corr.correlation.toFixed(4)}\n`;
+            });
+            message += '\n';
+        }
+        
+        message += `\n_Full details available in visualization below_`;
+        
+        // Add formatted message
+        this.addFormattedMessage('assistant', message);
+        
+        // Add visualization if available
+        if (result.visualization) {
+            this.addPlotMessage({ data: result.visualization }, '');
+        }
+    }
+
+    downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+>>>>>>> Stashed changes
 }
 
 // Initialize the application when DOM is loaded
