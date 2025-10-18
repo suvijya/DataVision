@@ -6,6 +6,8 @@ Handles CSV uploads, data analysis queries, and session lifecycle.
 import os
 import logging
 from typing import List, Dict, Any
+import numpy as np
+import pandas as pd
 
 from fastapi import (
     APIRouter, 
@@ -318,8 +320,11 @@ async def get_full_data(
         start_idx = (page - 1) * page_size
         end_idx = min(start_idx + page_size, total_rows)
         
-        # Get paginated data
-        page_data = df.iloc[start_idx:end_idx].to_dict('records')
+        # Get paginated data and replace NaN/Inf with None for JSON compatibility
+        page_df = df.iloc[start_idx:end_idx].copy()
+        page_df = page_df.replace([np.inf, -np.inf], np.nan)  # Convert Inf to NaN
+        page_df = page_df.where(pd.notna(page_df), None)  # Convert NaN to None
+        page_data = page_df.to_dict('records')
         
         return {
             "session_id": session_id,

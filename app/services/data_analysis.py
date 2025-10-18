@@ -35,7 +35,21 @@ def convert_numpy_types(obj):
     if isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
-        return float(obj)
+        # Handle NaN and Infinity
+        val = float(obj)
+        if np.isnan(val):
+            return None
+        elif np.isinf(val):
+            return None  # or use a large number like 1e308
+        return val
+    elif isinstance(obj, (float, int)):
+        # Handle regular Python floats that might be NaN/Inf
+        if isinstance(obj, float):
+            if np.isnan(obj):
+                return None
+            elif np.isinf(obj):
+                return None
+        return obj
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
     elif isinstance(obj, (np.bool_, bool)):

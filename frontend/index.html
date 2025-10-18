@@ -358,6 +358,134 @@
                 </div>
             </div>
         </div>
+
+        <!-- Settings Modal -->
+        <div class="modal" id="settingsModal" style="display: none;">
+            <div class="modal-content settings-modal">
+                <div class="modal-header">
+                    <h3><i class="fas fa-cog"></i> Settings</h3>
+                    <button class="modal-close" id="closeSettingsModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h4><i class="fas fa-palette"></i> Appearance</h4>
+                        <div class="setting-item">
+                            <label for="themeSelect">Theme</label>
+                            <select id="themeSelect" class="setting-select">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                                <option value="auto">Auto (System)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="fontSizeSelect">Font Size</label>
+                            <select id="fontSizeSelect" class="setting-select">
+                                <option value="small">Small</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4><i class="fas fa-chart-bar"></i> Data Visualization</h4>
+                        <div class="setting-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoRenderCharts" checked>
+                                <span class="checkmark"></span>
+                                Auto-render charts
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showDataLabels" checked>
+                                <span class="checkmark"></span>
+                                Show data labels on charts
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="chartThemeSelect">Chart Theme</label>
+                            <select id="chartThemeSelect" class="setting-select">
+                                <option value="plotly">Plotly Default</option>
+                                <option value="plotly_white">White Background</option>
+                                <option value="plotly_dark">Dark Background</option>
+                                <option value="seaborn">Seaborn Style</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4><i class="fas fa-database"></i> Data Processing</h4>
+                        <div class="setting-item">
+                            <label for="maxRowsDisplay">Max rows to display</label>
+                            <select id="maxRowsDisplay" class="setting-select">
+                                <option value="50">50 rows</option>
+                                <option value="100" selected>100 rows</option>
+                                <option value="200">200 rows</option>
+                                <option value="500">500 rows</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="cacheResults" checked>
+                                <span class="checkmark"></span>
+                                Cache analysis results
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h4><i class="fas fa-robot"></i> AI Assistant</h4>
+                        <div class="setting-item">
+                            <label for="responseStyle">Response Style</label>
+                            <select id="responseStyle" class="setting-select">
+                                <option value="concise">Concise</option>
+                                <option value="detailed" selected>Detailed</option>
+                                <option value="technical">Technical</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showCodeBlocks" checked>
+                                <span class="checkmark"></span>
+                                Show generated code
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoSuggestions" checked>
+                                <span class="checkmark"></span>
+                                Show query suggestions
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section danger-zone">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Data & Privacy</h4>
+                        <div class="setting-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="anonymizeData">
+                                <span class="checkmark"></span>
+                                Anonymize sensitive data (experimental)
+                            </label>
+                            <small class="setting-help">Automatically detect and mask potentially sensitive information</small>
+                        </div>
+                        <div class="setting-item">
+                            <button class="btn-danger" id="clearAllDataBtn">
+                                <i class="fas fa-trash"></i> Clear All Session Data
+                            </button>
+                            <small class="setting-help">This will delete all cached data and reset the application</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="resetSettingsBtn">Reset to Default</button>
+                    <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- External Libraries -->

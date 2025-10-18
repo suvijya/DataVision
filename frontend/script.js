@@ -91,6 +91,24 @@ class PyDataAssistant {
         
         if (closeErrorModal) closeErrorModal.addEventListener('click', () => this.hideError());
         if (dismissError) dismissError.addEventListener('click', () => this.hideError());
+
+        // Settings button
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsModal = document.getElementById('closeSettingsModal');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const resetSettingsBtn = document.getElementById('resetSettingsBtn');
+        const clearAllDataBtn = document.getElementById('clearAllDataBtn');
+        
+        if (settingsBtn) settingsBtn.addEventListener('click', () => this.openSettings());
+        if (closeSettingsModal) closeSettingsModal.addEventListener('click', () => this.closeSettings());
+        if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => this.saveSettings());
+        if (resetSettingsBtn) resetSettingsBtn.addEventListener('click', () => this.resetSettings());
+        if (clearAllDataBtn) clearAllDataBtn.addEventListener('click', () => this.clearAllData());
+
+        // Export button
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) exportBtn.addEventListener('click', () => this.exportData());
     }
 
     async checkApiConnection() {
@@ -222,6 +240,10 @@ class PyDataAssistant {
 
         // Show preview section
         this.previewSection.style.display = 'block';
+        
+        // Show export button
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) exportBtn.style.display = 'inline-block';
         
         // Load initial tab (sample data)
         this.switchTab('sample');
@@ -1016,6 +1038,180 @@ class PyDataAssistant {
     truncateText(text, maxLength) {
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength - 3) + '...';
+    }
+
+    // Settings Management
+    openSettings() {
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+            this.loadSettings();
+            modal.style.display = 'flex';
+        }
+    }
+
+    closeSettings() {
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    loadSettings() {
+        // Load saved settings from localStorage
+        const settings = JSON.parse(localStorage.getItem('pydataSettings') || '{}');
+        
+        if (settings.theme) document.getElementById('themeSelect').value = settings.theme;
+        if (settings.fontSize) document.getElementById('fontSizeSelect').value = settings.fontSize;
+        if (settings.chartTheme) document.getElementById('chartThemeSelect').value = settings.chartTheme;
+        if (settings.maxRowsDisplay) document.getElementById('maxRowsDisplay').value = settings.maxRowsDisplay;
+        if (settings.responseStyle) document.getElementById('responseStyle').value = settings.responseStyle;
+        
+        if (settings.autoRenderCharts !== undefined) document.getElementById('autoRenderCharts').checked = settings.autoRenderCharts;
+        if (settings.showDataLabels !== undefined) document.getElementById('showDataLabels').checked = settings.showDataLabels;
+        if (settings.cacheResults !== undefined) document.getElementById('cacheResults').checked = settings.cacheResults;
+        if (settings.showCodeBlocks !== undefined) document.getElementById('showCodeBlocks').checked = settings.showCodeBlocks;
+        if (settings.autoSuggestions !== undefined) document.getElementById('autoSuggestions').checked = settings.autoSuggestions;
+    }
+
+    saveSettings() {
+        const settings = {
+            theme: document.getElementById('themeSelect').value,
+            fontSize: document.getElementById('fontSizeSelect').value,
+            chartTheme: document.getElementById('chartThemeSelect').value,
+            maxRowsDisplay: document.getElementById('maxRowsDisplay').value,
+            responseStyle: document.getElementById('responseStyle').value,
+            autoRenderCharts: document.getElementById('autoRenderCharts').checked,
+            showDataLabels: document.getElementById('showDataLabels').checked,
+            cacheResults: document.getElementById('cacheResults').checked,
+            showCodeBlocks: document.getElementById('showCodeBlocks').checked,
+            autoSuggestions: document.getElementById('autoSuggestions').checked,
+            anonymizeData: document.getElementById('anonymizeData').checked
+        };
+        
+        localStorage.setItem('pydataSettings', JSON.stringify(settings));
+        
+        // Apply theme immediately
+        this.applyTheme(settings.theme);
+        
+        // Apply font size
+        document.documentElement.style.fontSize = settings.fontSize === 'small' ? '14px' : 
+                                                    settings.fontSize === 'large' ? '18px' : '16px';
+        
+        this.closeSettings();
+        this.showNotification('Settings saved successfully!', 'success');
+    }
+
+    resetSettings() {
+        if (confirm('Are you sure you want to reset all settings to default?')) {
+            localStorage.removeItem('pydataSettings');
+            this.loadSettings();
+            this.showNotification('Settings reset to default', 'info');
+        }
+    }
+
+    applyTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark-theme');
+        } else if (theme === 'light') {
+            document.body.classList.remove('dark-theme');
+        } else if (theme === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.body.classList.toggle('dark-theme', prefersDark);
+        }
+    }
+
+    clearAllData() {
+        if (confirm('⚠️ This will delete all session data and cannot be undone. Continue?')) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    // Export Data
+    async exportData() {
+        if (!this.currentSessionId || !this.currentDataPreview) {
+            this.showNotification('No data available to export', 'error');
+            return;
+        }
+
+        try {
+            this.showLoading('Preparing export...');
+            
+            // Fetch full dataset
+            const response = await fetch(`${this.apiBaseUrl}/session/${this.currentSessionId}/data?page=1&page_size=999999`);
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to fetch data');
+            }
+
+            // Convert to CSV
+            const csv = this.convertToCSV(result.data, result.columns);
+            
+            // Download
+            this.downloadFile(csv, `pydata-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+            
+            this.hideLoading();
+            this.showNotification('Data exported successfully!', 'success');
+        } catch (error) {
+            this.hideLoading();
+            this.showNotification(`Export failed: ${error.message}`, 'error');
+            console.error('Export error:', error);
+        }
+    }
+
+    convertToCSV(data, columns) {
+        if (!data || data.length === 0) return '';
+        
+        // Header row
+        let csv = columns.map(col => `"${col}"`).join(',') + '\n';
+        
+        // Data rows
+        data.forEach(row => {
+            const values = columns.map(col => {
+                let value = row[col];
+                if (value === null || value === undefined) value = '';
+                // Escape quotes and wrap in quotes if needed
+                value = String(value).replace(/"/g, '""');
+                if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                    value = `"${value}"`;
+                }
+                return value;
+            });
+            csv += values.join(',') + '\n';
+        });
+        
+        return csv;
+    }
+
+    downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 }
 
