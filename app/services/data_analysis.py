@@ -328,13 +328,56 @@ FORMATTING GUIDELINES:
 - Add blank lines between sections
 - Format numbers with appropriate precision
 
-VISUALIZATION GUIDELINES:
-- For pie charts: Use px.pie(df, names='column', values='column', title='Title')
-- For bar charts: Use px.bar(df, x='column', y='column', title='Title')
-- For scatter plots: Use px.scatter(df, x='column', y='column', title='Title')
+VISUALIZATION GUIDELINES - 25+ Chart Types Available:
+
+**Basic Charts:**
+- Pie Chart: px.pie(df, names='category_col', values='value_col', title='Title')
+- Bar Chart: px.bar(df, x='column', y='column', title='Title', color='category_col')
+- Histogram: px.histogram(df, x='column', nbins=30, title='Distribution of X')
+- Line Chart: px.line(df, x='time_col', y='value_col', title='Trend over Time')
+
+**Distribution & Comparison:**
+- Box Plot: px.box(df, x='category', y='numeric', title='Distribution by Category')
+- Violin Plot: px.violin(df, x='category', y='numeric', box=True, title='Distribution Comparison')
+- Strip Plot: px.strip(df, x='category', y='numeric', title='Individual Points by Category')
+- Density Heatmap: px.density_heatmap(df, x='col1', y='col2', title='2D Distribution')
+
+**Relationships:**
+- Scatter Plot: px.scatter(df, x='col1', y='col2', color='category', size='size_col', title='Relationship')
+- Bubble Chart: px.scatter(df, x='col1', y='col2', size='col3', color='col4', title='Multi-dimensional View')
+- 3D Scatter: px.scatter_3d(df, x='col1', y='col2', z='col3', color='category', title='3D Visualization')
+- Scatter Matrix: px.scatter_matrix(df, dimensions=['col1', 'col2', 'col3'], title='Pairwise Relationships')
+
+**Correlations:**
+- Heatmap (use go.Heatmap): fig = go.Figure(data=go.Heatmap(z=df.corr(), x=df.columns, y=df.columns, colorscale='RdBu'))
+- Correlation Matrix with px: Create correlation first, then use px.imshow(df.corr(), title='Correlations')
+
+**Hierarchical & Parts:**
+- Sunburst: px.sunburst(df, path=['level1', 'level2'], values='values', title='Hierarchical View')
+- Treemap: px.treemap(df, path=['category', 'subcategory'], values='values', title='Nested Rectangles')
+- Icicle: px.icicle(df, path=['level1', 'level2'], values='values', title='Vertical Hierarchy')
+
+**Trends & Time Series:**
+- Area Chart: px.area(df, x='date', y='value', title='Cumulative Trend')
+- Multiple Lines: px.line(df, x='date', y=['series1', 'series2'], title='Compare Trends')
+- Range Area: Use go.Scatter with fill for confidence intervals
+
+**Specialized Charts:**
+- Funnel: px.funnel(df, x='values', y='stages', title='Conversion Funnel')
+- Funnel Area: px.funnel_area(names=df['stage'], values=df['count'], title='Funnel Stages')
+- Parallel Coordinates: px.parallel_coordinates(df, dimensions=['col1', 'col2', 'col3'], title='Multivariate')
+- Parallel Categories: px.parallel_categories(df, dimensions=['cat1', 'cat2', 'cat3'], title='Flow Diagram')
+
+**Financial & Special:**
+- Candlestick (use go): fig = go.Figure(data=go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close']))
+- Waterfall (use go): fig = go.Figure(go.Waterfall(x=df['categories'], y=df['values']))
+- Indicator: fig = go.Figure(go.Indicator(mode='gauge+number', value=value, title='KPI'))
+
+**IMPORTANT RULES:**
 - DO NOT manually set hovertemplate or customdata
-- Let Plotly handle hover data automatically
+- Let Plotly handle hover data automatically using hover_data parameter
 - After creating visualizations, print a clear analysis of what the chart shows
+- Choose the chart type that best represents the data relationship
 
 RESPONSE FORMAT:
 Provide your analysis and then include the Python code in markdown code blocks like this:

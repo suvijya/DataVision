@@ -307,6 +307,11 @@ class PyDataAssistant {
             dtypes[col] && dtypes[col].includes('object')
         );
         
+        // Check for date/time columns
+        const dateCols = columns.filter(col => 
+            dtypes[col] && (dtypes[col].includes('datetime') || col.toLowerCase().includes('date') || col.toLowerCase().includes('time'))
+        );
+        
         // Data overview
         suggestions.push({
             icon: 'fas fa-eye',
@@ -325,7 +330,7 @@ class PyDataAssistant {
             });
         }
         
-        // Visualizations for numeric columns
+        // Distribution visualizations for numeric columns
         if (numericCols.length > 0) {
             const firstNumeric = numericCols[0];
             suggestions.push({
@@ -333,12 +338,22 @@ class PyDataAssistant {
                 label: `Distribution of ${firstNumeric}`,
                 query: `Create a histogram showing the distribution of ${firstNumeric}`
             });
+            
+            // Box plot for outlier detection
+            if (categoricalCols.length > 0) {
+                suggestions.push({
+                    icon: 'fas fa-box',
+                    label: `${firstNumeric} box plot by ${categoricalCols[0]}`,
+                    query: `Create a box plot of ${firstNumeric} grouped by ${categoricalCols[0]} to show distribution and outliers`
+                });
+            }
         }
         
+        // Multi-dimensional visualizations
         if (numericCols.length >= 2) {
             suggestions.push({
                 icon: 'fas fa-project-diagram',
-                label: 'Correlation analysis',
+                label: 'Correlation heatmap',
                 query: 'Show me correlations between numeric columns with a heatmap'
             });
             
@@ -347,12 +362,37 @@ class PyDataAssistant {
                 label: `${numericCols[0]} vs ${numericCols[1]}`,
                 query: `Create a scatter plot comparing ${numericCols[0]} and ${numericCols[1]}`
             });
+            
+            // Bubble chart if we have 3+ numeric columns
+            if (numericCols.length >= 3) {
+                suggestions.push({
+                    icon: 'fas fa-circle',
+                    label: `Bubble chart (3D view)`,
+                    query: `Create a bubble chart with ${numericCols[0]} on x-axis, ${numericCols[1]} on y-axis, and ${numericCols[2]} as bubble size`
+                });
+            }
         }
         
-        // Categorical analysis
+        // Time series analysis
+        if (dateCols.length > 0 && numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-chart-line',
+                label: `Trend over time`,
+                query: `Create a line chart showing ${numericCols[0]} over ${dateCols[0]}`
+            });
+            
+            suggestions.push({
+                icon: 'fas fa-chart-area',
+                label: `Area chart of trends`,
+                query: `Create an area chart showing cumulative ${numericCols[0]} over ${dateCols[0]}`
+            });
+        }
+        
+        // Categorical analysis with diverse chart types
         if (categoricalCols.length > 0 && numericCols.length > 0) {
             const cat = categoricalCols[0];
             const num = numericCols[0];
+            
             suggestions.push({
                 icon: 'fas fa-chart-pie',
                 label: `${cat} distribution`,
@@ -363,6 +403,28 @@ class PyDataAssistant {
                 icon: 'fas fa-chart-column',
                 label: `${num} by ${cat}`,
                 query: `Show me a bar chart of total ${num} grouped by ${cat}`
+            });
+            
+            // Violin plot for distribution comparison
+            suggestions.push({
+                icon: 'fas fa-music',
+                label: `${num} violin plot by ${cat}`,
+                query: `Create a violin plot comparing distribution of ${num} across different ${cat} categories`
+            });
+        }
+        
+        // Hierarchical visualizations
+        if (categoricalCols.length >= 2 && numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-sun',
+                label: `Hierarchical sunburst`,
+                query: `Create a sunburst chart showing ${numericCols[0]} broken down by ${categoricalCols[0]} and ${categoricalCols[1]}`
+            });
+            
+            suggestions.push({
+                icon: 'fas fa-th-large',
+                label: `Treemap visualization`,
+                query: `Create a treemap of ${numericCols[0]} by ${categoricalCols[0]} and ${categoricalCols[1]}`
             });
         }
         
@@ -431,6 +493,9 @@ class PyDataAssistant {
                 break;
             case 'insights':
                 content = this.renderInsights(preview);
+                break;
+            case 'chartgallery':
+                content = this.renderChartGallery();
                 break;
             default:
                 content = '<p>Tab content not implemented yet.</p>';
@@ -664,6 +729,117 @@ class PyDataAssistant {
                 <p><em>Use the chat interface to ask specific questions about your data!</em></p>
             </div>
         `;
+    }
+
+    renderChartGallery() {
+        const chartTypes = [
+            {
+                category: 'Distribution & Comparison',
+                charts: [
+                    { name: 'Bar Chart', icon: 'fa-chart-bar', description: 'Compare categories or values across groups', example: 'Show me a bar chart of sales by region' },
+                    { name: 'Histogram', icon: 'fa-chart-area', description: 'Visualize data distribution and frequency', example: 'Create a histogram of age distribution' },
+                    { name: 'Box Plot', icon: 'fa-box', description: 'Display quartiles, median, and outliers', example: 'Show box plot of prices by category' },
+                    { name: 'Violin Plot', icon: 'fa-music', description: 'Combine box plot with kernel density', example: 'Create violin plot comparing salaries across departments' }
+                ]
+            },
+            {
+                category: 'Relationships & Correlations',
+                charts: [
+                    { name: 'Scatter Plot', icon: 'fa-braille', description: 'Show relationship between two variables', example: 'Scatter plot of age vs income' },
+                    { name: 'Bubble Chart', icon: 'fa-circle', description: 'Scatter plot with size dimension', example: 'Show population vs GDP with bubble sizes for area' },
+                    { name: 'Heatmap', icon: 'fa-th', description: 'Display correlations in a color matrix', example: 'Create a correlation heatmap of all numeric columns' },
+                    { name: 'Line Chart', icon: 'fa-chart-line', description: 'Show trends over time or sequences', example: 'Line chart of monthly revenue over time' }
+                ]
+            },
+            {
+                category: 'Proportions & Parts',
+                charts: [
+                    { name: 'Pie Chart', icon: 'fa-chart-pie', description: 'Show percentage breakdown of categories', example: 'Pie chart of market share by product' },
+                    { name: 'Donut Chart', icon: 'fa-circle-notch', description: 'Pie chart with a center hole', example: 'Donut chart showing expense categories' },
+                    { name: 'Sunburst', icon: 'fa-sun', description: 'Hierarchical data in concentric circles', example: 'Sunburst chart of sales by region and product' },
+                    { name: 'Treemap', icon: 'fa-th-large', description: 'Nested rectangles for hierarchical data', example: 'Treemap of budget allocation by department' }
+                ]
+            },
+            {
+                category: 'Trends & Time Series',
+                charts: [
+                    { name: 'Area Chart', icon: 'fa-area-chart', description: 'Show cumulative totals over time', example: 'Area chart of cumulative sales' },
+                    { name: 'Line Chart', icon: 'fa-chart-line', description: 'Track changes over continuous intervals', example: 'Monthly temperature trends' },
+                    { name: 'Candlestick', icon: 'fa-chart-candlestick', description: 'Financial data (open, high, low, close)', example: 'Stock price movements over time' }
+                ]
+            },
+            {
+                category: 'Advanced & Specialized',
+                charts: [
+                    { name: '3D Scatter', icon: 'fa-cube', description: 'Three-dimensional scatter plot', example: 'Show 3D relationship between height, weight, and age' },
+                    { name: 'Funnel Chart', icon: 'fa-filter', description: 'Visualize progressive reduction in stages', example: 'Sales funnel from leads to conversions' },
+                    { name: 'Waterfall', icon: 'fa-water', description: 'Show cumulative effect of sequential values', example: 'Profit breakdown from revenue to net income' },
+                    { name: 'Polar Chart', icon: 'fa-circle-dot', description: 'Circular coordinate system visualization', example: 'Wind direction and speed distribution' }
+                ]
+            },
+            {
+                category: 'Statistical & Analysis',
+                charts: [
+                    { name: 'Density Plot', icon: 'fa-wave-square', description: 'Smooth distribution estimate', example: 'Density plot of test scores' },
+                    { name: 'Strip Plot', icon: 'fa-grip-lines', description: 'Show individual data points by category', example: 'Strip plot of scores by class' },
+                    { name: 'Parallel Coordinates', icon: 'fa-stream', description: 'Multivariate data visualization', example: 'Compare multiple features across samples' },
+                    { name: 'Contour Plot', icon: 'fa-mountain', description: 'Show 3D surface on 2D plane', example: 'Elevation contours or probability density' }
+                ]
+            }
+        ];
+
+        let html = '<div class="chart-gallery-content">';
+        html += '<h3><i class="fas fa-palette"></i> Available Visualization Types</h3>';
+        html += '<p class="gallery-intro">Choose from 25+ chart types to analyze and visualize your data. Click any example to try it!</p>';
+        
+        chartTypes.forEach(category => {
+            html += `<div class="chart-category">`;
+            html += `<h4><i class="fas fa-folder-open"></i> ${category.category}</h4>`;
+            html += `<div class="charts-grid">`;
+            
+            category.charts.forEach(chart => {
+                html += `
+                    <div class="chart-card">
+                        <div class="chart-icon">
+                            <i class="fas ${chart.icon}"></i>
+                        </div>
+                        <div class="chart-info">
+                            <h5>${chart.name}</h5>
+                            <p class="chart-description">${chart.description}</p>
+                            <div class="chart-example">
+                                <button class="try-chart-btn" onclick="window.pyDataAssistant.tryChartExample('${chart.example.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-play"></i> Try: "${chart.example}"
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+        });
+        
+        html += '<div class="chart-tips">';
+        html += '<h4><i class="fas fa-lightbulb"></i> Pro Tips</h4>';
+        html += '<ul>';
+        html += '<li><strong>Be specific:</strong> Include column names in your query for better results</li>';
+        html += '<li><strong>Multiple dimensions:</strong> Use "color=column" or "size=column" for richer visualizations</li>';
+        html += '<li><strong>Time series:</strong> Mention time-based columns for automatic time series handling</li>';
+        html += '<li><strong>Custom queries:</strong> Ask naturally - "Show me X grouped by Y with Z as colors"</li>';
+        html += '</ul>';
+        html += '</div>';
+        
+        html += '</div>';
+        return html;
+    }
+
+    tryChartExample(exampleQuery) {
+        if (!this.queryInput) return;
+        this.queryInput.value = exampleQuery;
+        this.updateCharCount();
+        // Scroll to chat input
+        this.queryInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.queryInput.focus();
     }
 
     showChat() {
