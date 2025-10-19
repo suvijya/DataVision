@@ -948,15 +948,30 @@ def _process_execution_result(result: Dict[str, Any], query: str) -> QueryRespon
     
     # Check if there's a plotly figure
     if result.get('figure'):
+        # Include the output (print statements) as insights for the visualization
+        output_text = result.get('output', '').strip()
+        
+        logger.info(f"Processing plot result - output_text length: {len(output_text)}")
+        logger.info(f"Output text preview: {output_text[:200] if output_text else 'EMPTY'}")
+        
+        plot_data = {
+            'response_type': 'plot',
+            'type': 'plotly',
+            'data': result['figure'],
+            'chart_type': _infer_chart_type(result['figure']),
+            'title': _extract_title_from_figure(result['figure']) or 'Data Visualization'
+        }
+        
+        # Add insights if there's meaningful output (not just the figure JSON)
+        if output_text and not output_text.startswith('{'):
+            plot_data['insights'] = output_text
+            logger.info(f"Added insights to plot_data: {len(output_text)} chars")
+        else:
+            logger.warning(f"No insights added - output_text empty or starts with '{{': {output_text[:50] if output_text else 'EMPTY'}")
+        
         return QueryResponseData(
             response_type='plot',
-            data={
-                'response_type': 'plot',
-                'type': 'plotly',
-                'data': result['figure'],
-                'chart_type': _infer_chart_type(result['figure']),
-                'title': _extract_title_from_figure(result['figure']) or 'Data Visualization'
-            }
+            data=plot_data
         )
     
     # Filter locals to remove non-serializable objects

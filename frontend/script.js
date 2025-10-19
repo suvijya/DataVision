@@ -1636,17 +1636,29 @@ class PyDataAssistant {
                 console.log('Handling plot response');
                 console.log('data.data:', data.data);
                 console.log('data.type:', data.type);
+                console.log('data.insights:', data.insights);
+                console.log('message parameter:', message);
                 
                 // Check if data has MIME type wrapper (e.g., {'application/vnd.plotly.v1+json': {...}})
                 let plotData = data;
                 if (data['application/vnd.plotly.v1+json']) {
                     console.log('Detected Plotly MIME type wrapper, extracting...');
-                    plotData = { data: data['application/vnd.plotly.v1+json'], title: data.title, type: data.type };
+                    plotData = { 
+                        data: data['application/vnd.plotly.v1+json'], 
+                        title: data.title, 
+                        type: data.type,
+                        insights: data.insights  // Preserve insights
+                    };
                 } else if (data['text/html']) {
                     console.log('Detected HTML wrapper, extracting...');
                     // Skip HTML and use the plotly json if available
                     if (data['application/vnd.plotly.v1+json']) {
-                        plotData = { data: data['application/vnd.plotly.v1+json'], title: data.title, type: data.type };
+                        plotData = { 
+                            data: data['application/vnd.plotly.v1+json'], 
+                            title: data.title, 
+                            type: data.type,
+                            insights: data.insights  // Preserve insights
+                        };
                     }
                 }
                 
@@ -1719,8 +1731,31 @@ class PyDataAssistant {
         const plotId = `plot-${Date.now()}`;
         const title = plotData.title || 'Data Visualization';
         
-        // Format the message (insights) nicely
-        const formattedMessage = message ? this.formatAnalysisText(message) : '';
+        // Get insights from either plotData.insights or message parameter
+        let insightsText = plotData.insights || message || '';
+        
+        // Filter out messages that are ONLY the raw Plotly JSON structure (shouldn't be displayed)
+        let formattedMessage = '';
+        if (insightsText && typeof insightsText === 'string') {
+            // ONLY filter if message is the complete Plotly JSON structure
+            // Check for the MIME type wrapper pattern: {'application/vnd.plotly.v1+json': {...}}
+            const isMimeWrapper = insightsText.trim().startsWith("{'application/vnd.plotly") || 
+                                  insightsText.trim().startsWith('{"application/vnd.plotly');
+            
+            // Check if it's a bare Plotly JSON structure: {'data': [...], 'layout': {...}}
+            const isPlotlyJson = insightsText.trim().startsWith('{') && 
+                                 (insightsText.includes('"data":') || insightsText.includes("'data':")) &&
+                                 (insightsText.includes('"layout":') || insightsText.includes("'layout':"));
+            
+            if (isMimeWrapper || isPlotlyJson) {
+                console.log('Filtering out raw Plotly JSON structure from message');
+                formattedMessage = ''; // Don't display raw JSON structure
+            } else {
+                // Format the insights text nicely
+                console.log('Displaying insights:', insightsText);
+                formattedMessage = this.formatAnalysisText(insightsText);
+            }
+        }
         
         messageDiv.innerHTML = `
             <div class="message-avatar"><i class="fas fa-chart-bar"></i></div>
@@ -1893,7 +1928,10 @@ class PyDataAssistant {
          * Decode Plotly's binary encoded data format
          * Plotly's to_json() encodes numpy arrays as {dtype: 'f8', bdata: 'base64...'}
          */
+        console.log('decodeBinaryData called with:', binaryObj);
+        
         if (!binaryObj || !binaryObj.bdata) {
+            console.log('No bdata found, returning as-is');
             return binaryObj;
         }
         
@@ -1901,12 +1939,16 @@ class PyDataAssistant {
             const dtype = binaryObj.dtype;
             const base64Data = binaryObj.bdata;
             
+            console.log(`Attempting to decode dtype: ${dtype}, data length: ${base64Data.length}`);
+            
             // Decode base64 to binary
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
+            
+            console.log(`Decoded ${bytes.length} bytes from base64`);
             
             // Convert based on dtype
             let result = [];
@@ -1922,18 +1964,60 @@ class PyDataAssistant {
                 for (let i = 0; i < bytes.length; i += 4) {
                     result.push(view.getFloat32(i, true));
                 }
+            } else if (dtype === 'i8') {
+                // Int64 (8 bytes per value) - JavaScript doesn't natively support int64, use BigInt
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 8) {
+                    result.push(Number(view.getBigInt64(i, true)));
+                }
             } else if (dtype === 'i4') {
                 // Int32 (4 bytes per value)
                 const view = new DataView(bytes.buffer);
                 for (let i = 0; i < bytes.length; i += 4) {
                     result.push(view.getInt32(i, true));
                 }
+            } else if (dtype === 'i2') {
+                // Int16 (2 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 2) {
+                    result.push(view.getInt16(i, true));
+                }
+            } else if (dtype === 'i1') {
+                // Int8 (1 byte per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 1) {
+                    result.push(view.getInt8(i));
+                }
+            } else if (dtype === 'u8') {
+                // Uint64 (8 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 8) {
+                    result.push(Number(view.getBigUint64(i, true)));
+                }
+            } else if (dtype === 'u4') {
+                // Uint32 (4 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 4) {
+                    result.push(view.getUint32(i, true));
+                }
+            } else if (dtype === 'u2') {
+                // Uint16 (2 bytes per value)
+                const view = new DataView(bytes.buffer);
+                for (let i = 0; i < bytes.length; i += 2) {
+                    result.push(view.getUint16(i, true));
+                }
+            } else if (dtype === 'u1') {
+                // Uint8 (1 byte per value)
+                for (let i = 0; i < bytes.length; i++) {
+                    result.push(bytes[i]);
+                }
             } else {
                 console.warn('Unknown dtype:', dtype, '- returning original');
                 return binaryObj;
             }
             
-            console.log(`Decoded ${result.length} values from binary data (dtype: ${dtype})`);
+            console.log(`✅ Successfully decoded ${result.length} values from binary data (dtype: ${dtype})`);
+            console.log('Decoded result preview:', result.slice(0, 10));
             return result;
         } catch (error) {
             console.error('Error decoding binary data:', error);

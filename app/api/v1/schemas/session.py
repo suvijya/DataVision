@@ -96,7 +96,7 @@ class StatisticsData(BaseModel):
     response_type: Literal["statistics"] = Field("statistics", description="Response type discriminator")
     calculation: str = Field(..., description="Type of calculation performed")
     results: Dict[str, Any] = Field(..., description="Statistical results")
-    summary_stats: Optional[Dict[str, float]] = Field(None, description="Summary statistics")
+    summary_stats: Optional[Dict[str, Any]] = Field(None, description="Summary statistics (can include None values)")
     interpretation: str = Field(..., description="Plain English interpretation")
 
 
