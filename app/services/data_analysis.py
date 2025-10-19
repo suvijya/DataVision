@@ -266,8 +266,12 @@ async def process_query_with_llm(session: Session, query: str) -> Tuple[QueryRes
         code_blocks = _extract_code_blocks(llm_response)
         
         if code_blocks:
+            logger.info(f"=== Generated Code (first block) ===\n{code_blocks[0]}\n=== End Code ===")
+            
             # Execute the code
             result = _execute_code_safely(code_blocks[0], df)
+            
+            logger.info(f"Execution result: success={result['success']}, output_length={len(result.get('output', ''))}, has_figure={bool(result.get('figure'))}")
             
             if result['success']:
                 response_data = _process_execution_result(result, query)
@@ -466,20 +470,26 @@ STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
   print(f"RMSE: {{rmse:.4f}}")
   # DO NOT ADD fig.show() or any visualization!
 
-- Find Best Variable Pair for Regression:
-  # Exclude ID-like columns
-  exclude_keywords = ['id', 'postal', 'code', 'index', 'row']
+- Find Best Variable Pair for Regression (TEXT OUTPUT ONLY - NO VISUALIZATION):
+  # Step 1: Get all numeric columns, excluding ID-like columns (define keywords inline every time)
   numeric_cols = [col for col in df.select_dtypes(include=[np.number]).columns 
-                  if not any(kw in col.lower() for kw in exclude_keywords)]
-  # Calculate all pairwise correlations (combinations is pre-imported)
+                  if not any(kw in col.lower() for kw in ['id', 'postal', 'code', 'index', 'row'])]
+  
+  # Step 2: Calculate all pairwise correlations (combinations is pre-imported, use it directly)
   pairs = []
   for col1, col2 in combinations(numeric_cols, 2):
       corr = df[[col1, col2]].corr().iloc[0, 1]
       pairs.append((abs(corr), corr, col1, col2))
   pairs.sort(reverse=True)
-  print(f"### Top 3 Variable Pairs for Linear Regression ###")
+  
+  # Step 3: Print results in TEXT FORMAT
+  print("### Top 3 Variable Pairs for Linear Regression ###")
+  print("")
   for i, (abs_corr, corr, c1, c2) in enumerate(pairs[:3], 1):
-      print(f"{{i}}. {{c1}} → {{c2}}: r={{corr:.4f}}, R²≈{{corr**2:.4f}}")
+      print(f"{{i}}. {{c1}} → {{c2}}")
+      print(f"   Correlation: {{corr:.4f}}")
+      print(f"   Estimated R²: {{corr**2:.4f}}")
+      print("")
 
 - Distribution Fitting: stats.norm.fit(df['col']); stats.kstest(df['col'], 'norm', params)
 
@@ -594,14 +604,17 @@ print("### Summary Statistics ###")
 print(df.describe().to_string())
 ```
 
-**For visualization queries:**
+**⚠️ CRITICAL FOR VISUALIZATION QUERIES - READ CAREFULLY:**
+When creating ANY visualization (pie chart, bar chart, line chart, etc.):
+
+1. **ALWAYS print insights FIRST** (before creating fig)
+2. **Then create the chart** and assign to 'fig' variable
+3. **NEVER call fig.show()** - just assign to 'fig'
+
 ```python
 # NO IMPORTS - modules already available: pd, np, px, go, df
-# Create ONE chart
-fig = px.histogram(df, x='column_name', title='Clear Title')
-fig.show()  # This MUST be the last line for visualizations
 
-# IMPORTANT: After fig.show(), print insights about the visualization
+# STEP 1: Print insights FIRST (MANDATORY)
 print("")
 print("### 📊 Analysis Insights ###")
 print("")
@@ -613,6 +626,12 @@ print("")
 print("**Recommendations:**")
 print("• Suggestion 1 for data quality or next steps")
 print("• Suggestion 2 for further analysis if needed")
+print("")
+
+# STEP 2: Create the chart (assign to 'fig' - DO NOT call fig.show())
+fig = px.pie(df, names='category', values='values', title='Clear Title')
+
+# STEP 3: DO NOT add fig.show() - the system detects 'fig' automatically
 ```
 
 ADVANCED STATISTICAL ANALYSIS - Available via scipy.stats:
@@ -962,12 +981,23 @@ def _process_execution_result(result: Dict[str, Any], query: str) -> QueryRespon
             'title': _extract_title_from_figure(result['figure']) or 'Data Visualization'
         }
         
-        # Add insights if there's meaningful output (not just the figure JSON)
+        # Add insights if there's meaningful output from print statements
         if output_text and not output_text.startswith('{'):
             plot_data['insights'] = output_text
             logger.info(f"Added insights to plot_data: {len(output_text)} chars")
         else:
-            logger.warning(f"No insights added - output_text empty or starts with '{{': {output_text[:50] if output_text else 'EMPTY'}")
+            # If no print statements, generate basic insights from the query and chart type
+            chart_type = plot_data['chart_type']
+            title = plot_data['title']
+            
+            # Generate automatic insights
+            auto_insights = f"### 📊 Visualization Complete ###\n\n"
+            auto_insights += f"Created a **{chart_type} chart**: {title}\n\n"
+            auto_insights += f"**Chart Type:** {chart_type.title()}\n"
+            auto_insights += f"**Purpose:** This visualization helps analyze patterns and distributions in your data.\n"
+            
+            plot_data['insights'] = auto_insights
+            logger.info(f"Generated automatic insights (LLM provided no print statements)")
         
         return QueryResponseData(
             response_type='plot',
