@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.simple_config import settings, validate_configuration
 from app.api.v1.endpoints.session import router as session_router
+from app.api.v1.endpoints.statistical_analysis import router as statistical_analysis_router
 
 # Custom JSON encoder for NumPy types
 class NumpyJSONEncoder:
@@ -135,6 +136,12 @@ app.include_router(
     session_router,
     prefix="/api/v1",
     tags=["sessions"]
+)
+
+app.include_router(
+    statistical_analysis_router,
+    prefix="/api/v1",
+    tags=["statistical-analysis"]
 )
 
 # Mount frontend static files

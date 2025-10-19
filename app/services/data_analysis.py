@@ -20,6 +20,40 @@ from contextlib import redirect_stdout, redirect_stderr
 
 import google.generativeai as genai
 
+# Import statistical libraries
+try:
+    import scipy
+    import scipy.stats as stats
+    from scipy import stats as sp_stats
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+    stats = None
+    sp_stats = None
+    
+try:
+    import statsmodels
+    import statsmodels.api as sm
+    from statsmodels.tsa.stattools import adfuller, grangercausalitytests
+    STATSMODELS_AVAILABLE = True
+except ImportError:
+    STATSMODELS_AVAILABLE = False
+    sm = None
+    adfuller = None
+    grangercausalitytests = None
+
+try:
+    import sklearn
+    from sklearn.ensemble import IsolationForest
+    from sklearn.linear_model import LinearRegression, LogisticRegression
+    from sklearn.preprocessing import PolynomialFeatures
+    from sklearn.metrics import mean_squared_error, r2_score
+    from sklearn.model_selection import train_test_split
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    sklearn = None
+
 from app.core.simple_config import settings
 from app.services.session_manager import Session
 
@@ -313,13 +347,68 @@ INSTRUCTIONS:
 2. Use pandas for data manipulation (df is the DataFrame variable)
 3. For visualizations, use plotly.express (px) or plotly.graph_objects (go)
 4. Format output text with clear headers, bullet points, and proper spacing
-5. CRITICAL: DO NOT include ANY import statements - all modules are already imported (pd, np, px, go)
-6. CRITICAL: DO NOT use __import__, exec, eval, or any dynamic code execution
-7. Available modules: pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
-8. For summaries: use clear section headers like "### Dataset Overview ###"
-9. For visualizations: create ONE figure per request and use fig.show() at the end
-10. IMPORTANT: Do NOT use customdata or hovertemplate in Plotly charts - use simple hover_data parameter only
-11. For simple queries (overview, describe, summary), just use print() - NO visualization needed
+5. ⚠️ CRITICAL: DO NOT include ANY import statements - all modules are ALREADY IMPORTED
+6. ⚠️ CRITICAL: DO NOT use __import__, exec, eval, or any dynamic code execution
+7. ⚠️ CRITICAL: DO NOT return model objects (LinearRegression, IsolationForest, etc.) - only return RESULTS (numbers, strings, arrays)
+8. ⚠️ CRITICAL: For LINEAR REGRESSION, POLYNOMIAL REGRESSION, and STATISTICAL TESTS - DO NOT CREATE VISUALIZATIONS!
+9. ⚠️ CRITICAL: Only use print() for regression results - NO fig.show(), NO px.scatter, NO plotting!
+10. ⚠️ DO NOT write: from sklearn import..., import scipy, import statsmodels, etc.
+11. Available modules (PRE-IMPORTED - USE DIRECTLY):
+   - pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
+   - stats, sp_stats (scipy.stats) - for statistical tests
+   - sm (statsmodels.api) - for advanced statistical models
+   - adfuller, grangercausalitytests (statsmodels) - for time series
+   - LinearRegression, LogisticRegression, PolynomialFeatures (sklearn - USE DIRECTLY)
+   - IsolationForest (sklearn.ensemble) - for outlier detection
+   - mean_squared_error, r2_score (sklearn.metrics)
+   - train_test_split (sklearn.model_selection)
+12. For summaries: use clear section headers like "### Dataset Overview ###"
+13. For visualizations: ONLY create charts for distribution plots, histograms, box plots - NOT for regression!
+14. For simple queries (overview, describe, summary, regression), just use print() - NO visualization needed
+
+STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
+- Normality Test: stats.shapiro(df['column'])
+- T-Test: stats.ttest_ind(df[df['group']=='A']['value'], df[df['group']=='B']['value'])
+- Correlation: df[['col1', 'col2']].corr(method='pearson')
+- ANOVA: stats.f_oneway(group1, group2, group3)
+- Chi-Square: stats.chi2_contingency(pd.crosstab(df['cat1'], df['cat2']))
+- Outliers (IQR): Q1 = df['col'].quantile(0.25); Q3 = df['col'].quantile(0.75); IQR = Q3 - Q1
+- Outliers (Z-score): np.abs(stats.zscore(df['col'])) > 3
+- Outliers (Isolation Forest): IsolationForest(contamination=0.1).fit_predict(df[['col']])
+- Linear Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
+  X = df[['predictor_col']].values
+  y = df['target_col'].values
+  model = LinearRegression()
+  model.fit(X, y)
+  predictions = model.predict(X)
+  r2 = r2_score(y, predictions)
+  rmse = np.sqrt(mean_squared_error(y, predictions))
+  print(f"### Linear Regression Results ###")
+  print(f"R² Score: {{r2:.4f}}")
+  print(f"RMSE: {{rmse:.4f}}")
+  print(f"Coefficient: {{model.coef_[0]:.4f}}")
+  print(f"Intercept: {{model.intercept_:.4f}}")
+  print(f"\\nFirst 10 predictions:")
+  for i in range(min(10, len(predictions))):
+      print(f"  Actual: {{y[i]:.2f}}, Predicted: {{predictions[i]:.2f}}, Residual: {{y[i]-predictions[i]:.2f}}")
+  # DO NOT ADD fig.show() or any visualization!
+
+- Polynomial Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
+  X = df[['predictor_col']].values
+  y = df['target_col'].values
+  poly = PolynomialFeatures(degree=2)
+  X_poly = poly.fit_transform(X)
+  model = LinearRegression()
+  model.fit(X_poly, y)
+  predictions = model.predict(X_poly)
+  r2 = r2_score(y, predictions)
+  rmse = np.sqrt(mean_squared_error(y, predictions))
+  print(f"### Polynomial Regression Results (Degree 2) ###")
+  print(f"R² Score: {{r2:.4f}}")
+  print(f"RMSE: {{rmse:.4f}}")
+  # DO NOT ADD fig.show() or any visualization!
+
+- Distribution Fitting: stats.norm.fit(df['col']); stats.kstest(df['col'], 'norm', params)
 
 FORMATTING GUIDELINES:
 - Use "###" for main section headers
@@ -419,12 +508,97 @@ print("• Suggestion 1 for data quality or next steps")
 print("• Suggestion 2 for further analysis if needed")
 ```
 
+ADVANCED STATISTICAL ANALYSIS - Available via scipy.stats:
+You now have access to advanced statistical tests via scipy.stats module (imported as stats):
+
+**Normality Tests:**
+```python
+from scipy import stats
+# Shapiro-Wilk test
+stat, p = stats.shapiro(df['column'].dropna())
+print(f"Shapiro-Wilk: statistic={{stat:.4f}}, p-value={{p:.4f}}")
+print(f"Data is {{'normal' if p > 0.05 else 'NOT normal'}} (α=0.05)")
+```
+
+**T-Tests:**
+```python
+from scipy import stats
+# Independent samples t-test
+group1 = df[df['group']=='A']['value'].dropna()
+group2 = df[df['group']=='B']['value'].dropna()
+stat, p = stats.ttest_ind(group1, group2)
+print(f"T-test: t={{stat:.4f}}, p={{p:.4f}}, significant={{p < 0.05}}")
+```
+
+**Correlation Tests:**
+```python
+from scipy import stats
+# Pearson correlation
+corr, p = stats.pearsonr(df['x'].dropna(), df['y'].dropna())
+print(f"Pearson r={{corr:.4f}}, p={{p:.4f}}, significant={{p < 0.05}}")
+```
+
+**Chi-Square Test:**
+```python
+from scipy import stats
+contingency = pd.crosstab(df['cat1'], df['cat2'])
+chi2, p, dof, expected = stats.chi2_contingency(contingency)
+print(f"Chi-square={{chi2:.4f}}, p={{p:.4f}}, df={{dof}}")
+```
+
+**ANOVA:**
+```python
+from scipy import stats
+groups = [group['value'].dropna() for name, group in df.groupby('category')]
+f_stat, p = stats.f_oneway(*groups)
+print(f"ANOVA: F={{f_stat:.4f}}, p={{p:.4f}}")
+```
+
+**Outlier Detection:**
+```python
+# Z-score method
+z_scores = np.abs(stats.zscore(df['column'].dropna()))
+outliers = df['column'][z_scores > 3]
+print(f"Found {{len(outliers)}} outliers using Z-score method")
+
+# IQR method
+Q1, Q3 = df['column'].quantile([0.25, 0.75])
+IQR = Q3 - Q1
+outliers_iqr = df['column'][(df['column'] < Q1 - 1.5*IQR) | (df['column'] > Q3 + 1.5*IQR)]
+print(f"Found {{len(outliers_iqr)}} outliers using IQR method")
+```
+
+**Regression Analysis:**
+```python
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+
+X = df[['feature1', 'feature2']].dropna()
+y = df.loc[X.index, 'target']
+
+model = LinearRegression()
+model.fit(X, y)
+r2 = r2_score(y, model.predict(X))
+
+print(f"Linear Regression R²={{r2:.4f}}")
+print(f"Coefficients: {{model.coef_}}")
+print(f"Intercept: {{model.intercept_:.4f}}")
+```
+
+IMPORTANT: For statistical queries, always import the necessary modules at the top:
+```python
+from scipy import stats
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, mean_squared_error
+```
+
 Focus on:
 - Clear insights and findings after EVERY visualization
 - What patterns, trends, or anomalies are visible
 - Data quality issues if any (outliers, missing values, imbalanced data)
 - Actionable recommendations for the user
-- Statistical analysis when relevant
+- Statistical analysis when relevant - use scipy.stats for hypothesis tests
+- For advanced statistics, suggest using the dedicated /api/v1/statistical-analysis endpoints
 
 """
     
@@ -551,6 +725,28 @@ def _execute_code_safely(code: str, df: pd.DataFrame) -> Dict[str, Any]:
             'go': go,
             'df': df.copy()  # Work with a copy to avoid modifying original
         }
+        
+        # Add statistical libraries if available
+        if SCIPY_AVAILABLE:
+            exec_globals['scipy'] = scipy
+            exec_globals['stats'] = stats
+            exec_globals['sp_stats'] = sp_stats
+            
+        if STATSMODELS_AVAILABLE:
+            exec_globals['statsmodels'] = statsmodels
+            exec_globals['sm'] = sm
+            exec_globals['adfuller'] = adfuller
+            exec_globals['grangercausalitytests'] = grangercausalitytests
+            
+        if SKLEARN_AVAILABLE:
+            exec_globals['sklearn'] = sklearn
+            exec_globals['IsolationForest'] = IsolationForest
+            exec_globals['LinearRegression'] = LinearRegression
+            exec_globals['LogisticRegression'] = LogisticRegression
+            exec_globals['PolynomialFeatures'] = PolynomialFeatures
+            exec_globals['mean_squared_error'] = mean_squared_error
+            exec_globals['r2_score'] = r2_score
+            exec_globals['train_test_split'] = train_test_split
         
         exec_locals = {}
         

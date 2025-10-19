@@ -106,6 +106,14 @@ class PyDataAssistant {
         if (resetSettingsBtn) resetSettingsBtn.addEventListener('click', () => this.resetSettings());
         if (clearAllDataBtn) clearAllDataBtn.addEventListener('click', () => this.clearAllData());
 
+        // Help button
+        const helpBtn = document.getElementById('helpBtn');
+        const helpModal = document.getElementById('helpModal');
+        const closeHelpModal = document.getElementById('closeHelpModal');
+        
+        if (helpBtn) helpBtn.addEventListener('click', () => this.openHelp());
+        if (closeHelpModal) closeHelpModal.addEventListener('click', () => this.closeHelp());
+
         // Export button
         const exportBtn = document.getElementById('exportBtn');
         if (exportBtn) exportBtn.addEventListener('click', () => this.exportData());
@@ -446,7 +454,97 @@ class PyDataAssistant {
             });
         }
         
-        return suggestions.slice(0, 8); // Limit to 8 suggestions
+        // Advanced Statistical Analysis Suite
+        if (numericCols.length > 0) {
+            // Normality tests
+            suggestions.push({
+                icon: 'fas fa-chart-bell',
+                label: 'Test normality of data',
+                query: `Test if ${numericCols[0]} follows a normal distribution using Shapiro-Wilk, D'Agostino-Pearson, and Anderson-Darling tests`
+            });
+            
+            // Distribution fitting
+            suggestions.push({
+                icon: 'fas fa-wave-square',
+                label: 'Fit distributions',
+                query: `Fit various probability distributions (normal, exponential, gamma, etc.) to ${numericCols[0]} and find the best fit`
+            });
+        }
+        
+        // Hypothesis testing
+        if (numericCols.length >= 2) {
+            suggestions.push({
+                icon: 'fas fa-balance-scale',
+                label: 'Compare two groups (T-test)',
+                query: `Perform independent t-test to compare ${numericCols[0]} and ${numericCols[1]}, including effect size (Cohen's d)`
+            });
+            
+            suggestions.push({
+                icon: 'fas fa-link',
+                label: 'Test correlation significance',
+                query: `Test correlation between ${numericCols[0]} and ${numericCols[1]} using Pearson, Spearman, and Kendall methods`
+            });
+        }
+        
+        // Advanced outlier detection
+        if (numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-bullseye',
+                label: 'Advanced outlier detection',
+                query: `Detect outliers in ${numericCols[0]} using multiple methods: IQR, Z-score, Modified Z-score (MAD), and Isolation Forest`
+            });
+        }
+        
+        // Regression analysis
+        if (numericCols.length >= 2) {
+            suggestions.push({
+                icon: 'fas fa-chart-line-up',
+                label: 'Regression analysis',
+                query: `Perform linear regression with ${numericCols[0]} as predictor and ${numericCols[1]} as target, including R², RMSE, and residual analysis`
+            });
+            
+            if (numericCols.length >= 3) {
+                suggestions.push({
+                    icon: 'fas fa-bezier-curve',
+                    label: 'Polynomial regression',
+                    query: `Perform polynomial regression to model non-linear relationship between ${numericCols[0]} and ${numericCols[1]}`
+                });
+            }
+        }
+        
+        // ANOVA for multiple groups
+        if (categoricalCols.length > 0 && numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-layer-group',
+                label: 'Compare multiple groups (ANOVA)',
+                query: `Perform one-way ANOVA to compare ${numericCols[0]} across different ${categoricalCols[0]} groups, including eta-squared effect size`
+            });
+            
+            suggestions.push({
+                icon: 'fas fa-table-cells',
+                label: 'Chi-square test',
+                query: `Perform chi-square test of independence between ${categoricalCols[0]} and ${categoricalCols.length > 1 ? categoricalCols[1] : numericCols[0]}, including Cramér's V`
+            });
+        }
+        
+        // Time series analysis
+        if (dateCols.length > 0 && numericCols.length > 0) {
+            suggestions.push({
+                icon: 'fas fa-clock',
+                label: 'Time series stationarity test',
+                query: `Test if ${numericCols[0]} time series is stationary using Augmented Dickey-Fuller test`
+            });
+            
+            if (numericCols.length >= 2) {
+                suggestions.push({
+                    icon: 'fas fa-arrows-alt-h',
+                    label: 'Granger causality test',
+                    query: `Test if ${numericCols[0]} Granger-causes ${numericCols[1]} (predictive causality in time series)`
+                });
+            }
+        }
+        
+        return suggestions.slice(0, 12); // Increased limit to show more statistical options
     }
 
     executeSuggestion(query) {
@@ -455,6 +553,26 @@ class PyDataAssistant {
         this.queryInput.value = query;
         this.updateCharCount();
         this.sendQuery();
+    }
+
+    executeStatisticalQuery(query) {
+        // Same as executeSuggestion but with explicit focus on chat
+        if (!this.queryInput) return;
+        
+        // Scroll to chat section
+        const chatSection = document.getElementById('chatSection');
+        if (chatSection) {
+            chatSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        // Set query and send
+        this.queryInput.value = query;
+        this.updateCharCount();
+        
+        // Small delay to ensure smooth scroll
+        setTimeout(() => {
+            this.sendQuery();
+        }, 300);
     }
 
     switchTab(tabName) {
@@ -493,6 +611,9 @@ class PyDataAssistant {
                 break;
             case 'insights':
                 content = this.renderInsights(preview);
+                break;
+            case 'statistical':
+                content = this.renderStatisticalAnalysisTab(preview);
                 break;
             case 'chartgallery':
                 content = this.renderChartGallery();
@@ -729,6 +850,359 @@ class PyDataAssistant {
                 <p><em>Use the chat interface to ask specific questions about your data!</em></p>
             </div>
         `;
+    }
+
+    renderStatisticalAnalysisTab(preview) {
+        const columns = preview.columns || [];
+        const dtypes = preview.dtypes || {};
+        
+        // Get numeric and categorical columns
+        const numericCols = columns.filter(col => 
+            dtypes[col] && (dtypes[col].includes('int') || dtypes[col].includes('float'))
+        );
+        const categoricalCols = columns.filter(col => 
+            dtypes[col] && dtypes[col].includes('object')
+        );
+
+        let html = '<div class="statistical-analysis-content">';
+        html += '<h3><i class="fas fa-flask"></i> Professional Statistical Analysis Suite</h3>';
+        html += '<p class="stats-intro">🎉 <strong>11 Advanced Statistical Tools</strong> - Click any analysis below to run it on your data!</p>';
+        
+        // Hypothesis Testing
+        html += '<div class="stats-category">';
+        html += '<h4><i class="fas fa-vial"></i> Hypothesis Testing</h4>';
+        html += '<div class="stats-grid">';
+        
+        // Normality Tests
+        if (numericCols.length > 0) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-chart-bell"></i></div>
+                    <h5>Normality Tests</h5>
+                    <p>Test if data follows normal distribution using 4 methods</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Test if ${numericCols[0]} is normally distributed using all methods')">
+                            Test ${numericCols[0]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Methods:</strong> Shapiro-Wilk, D'Agostino-Pearson, Anderson-Darling, KS</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        // T-Tests
+        if (numericCols.length >= 2) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-balance-scale"></i></div>
+                    <h5>T-Test (Compare Groups)</h5>
+                    <p>Compare means between two groups with effect size</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform independent t-test comparing ${numericCols[0]} and ${numericCols[1]} including Cohen\\'s d effect size')">
+                            Compare ${numericCols[0]} vs ${numericCols[1]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Includes:</strong> t-statistic, p-value, Cohen's d, confidence interval</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ANOVA
+        if (categoricalCols.length > 0 && numericCols.length > 0) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-layer-group"></i></div>
+                    <h5>ANOVA (Multiple Groups)</h5>
+                    <p>Compare means across 3+ groups</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform one-way ANOVA comparing ${numericCols[0]} across different ${categoricalCols[0]} groups with eta-squared effect size')">
+                            ${numericCols[0]} by ${categoricalCols[0]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Includes:</strong> F-statistic, p-value, eta-squared</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Chi-Square
+        if (categoricalCols.length >= 2) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-table-cells"></i></div>
+                    <h5>Chi-Square Test</h5>
+                    <p>Test independence between categorical variables</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform chi-square test of independence between ${categoricalCols[0]} and ${categoricalCols[1]} including Cramér\\'s V')">
+                            ${categoricalCols[0]} vs ${categoricalCols[1]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Includes:</strong> χ² statistic, p-value, Cramér's V</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Correlation
+        if (numericCols.length >= 2) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-link"></i></div>
+                    <h5>Correlation Analysis</h5>
+                    <p>Test correlation significance (3 methods)</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Test correlation between ${numericCols[0]} and ${numericCols[1]} using Pearson, Spearman, and Kendall methods')">
+                            ${numericCols[0]} vs ${numericCols[1]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Methods:</strong> Pearson, Spearman, Kendall</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div></div>'; // Close hypothesis testing
+
+        // Outlier Detection
+        html += '<div class="stats-category">';
+        html += '<h4><i class="fas fa-bullseye"></i> Outlier Detection</h4>';
+        html += '<div class="stats-grid">';
+        
+        if (numericCols.length > 0) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-search"></i></div>
+                    <h5>Advanced Outlier Detection</h5>
+                    <p>Detect anomalies using 4 different methods</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Detect outliers in ${numericCols[0]} using all methods: IQR, Z-score, Modified Z-score (MAD), and Isolation Forest')">
+                            Detect in ${numericCols[0]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Methods:</strong> IQR, Z-score, Modified Z-score (MAD), Isolation Forest</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div></div>'; // Close outlier detection
+
+        // Regression Analysis
+        html += '<div class="stats-category">';
+        html += '<h4><i class="fas fa-chart-line-up"></i> Regression Analysis</h4>';
+        html += '<div class="stats-grid">';
+        
+        if (numericCols.length >= 2) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-chart-line"></i></div>
+                    <h5>Linear Regression</h5>
+                    <p>Model linear relationships with text-based analysis</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform linear regression with ${numericCols[0]} as predictor and ${numericCols[1]} as target. Show R², RMSE, coefficients, and first 10 predictions in TEXT FORMAT ONLY - do not create any visualization')">
+                            ${numericCols[0]} → ${numericCols[1]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Text Output:</strong> R², RMSE, coefficients, sample predictions</small>
+                    </div>
+                </div>
+            `;
+
+            if (numericCols.length >= 3) {
+                html += `
+                    <div class="stat-tool-card">
+                        <div class="tool-icon"><i class="fas fa-bezier-curve"></i></div>
+                        <h5>Polynomial Regression</h5>
+                        <p>Model non-linear relationships (text output)</p>
+                        <div class="tool-actions">
+                            <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform polynomial regression (degree 2) with ${numericCols[0]} and ${numericCols[1]}. Show R², RMSE, coefficients in TEXT FORMAT ONLY - do not create any visualization')">
+                                Polynomial Fit
+                            </button>
+                        </div>
+                        <div class="tool-info">
+                            <small><strong>Text Output:</strong> Polynomial coefficients, R², RMSE</small>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        html += '</div></div>'; // Close regression
+
+        // Distribution Fitting
+        html += '<div class="stats-category">';
+        html += '<h4><i class="fas fa-wave-square"></i> Distribution Fitting</h4>';
+        html += '<div class="stats-grid">';
+        
+        if (numericCols.length > 0) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-chart-area"></i></div>
+                    <h5>Fit Probability Distributions</h5>
+                    <p>Test which distribution best fits your data</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Fit various probability distributions (normal, exponential, gamma, beta, lognormal, weibull, etc.) to ${numericCols[0]} and find the best fit')">
+                            Fit ${numericCols[0]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>13 Distributions:</strong> normal, exponential, gamma, beta, lognormal, weibull, uniform, chi2, t, f, pareto, logistic, gumbel</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div></div>'; // Close distribution fitting
+
+        // Summary Statistics
+        html += '<div class="stats-category">';
+        html += '<h4><i class="fas fa-calculator"></i> Summary Statistics</h4>';
+        html += '<div class="stats-grid">';
+        
+        if (numericCols.length > 0) {
+            html += `
+                <div class="stat-tool-card">
+                    <div class="tool-icon"><i class="fas fa-list-ol"></i></div>
+                    <h5>Comprehensive Statistics</h5>
+                    <p>Get detailed descriptive statistics</p>
+                    <div class="tool-actions">
+                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Get comprehensive statistics for ${numericCols[0]} including mean, median, mode, std, variance, skewness, kurtosis, quartiles, and range')">
+                            Analyze ${numericCols[0]}
+                        </button>
+                    </div>
+                    <div class="tool-info">
+                        <small><strong>Metrics:</strong> Central tendency, dispersion, shape, position</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div></div>'; // Close summary stats
+
+        // Custom Query Section
+        html += '<div class="stats-category">';
+        html += '<h4><i class="fas fa-keyboard"></i> Custom Analysis</h4>';
+        html += '<div class="custom-stats-input">';
+        html += '<p>Or type your own statistical analysis query in the chat below. Examples:</p>';
+        html += '<ul class="stats-examples">';
+        if (numericCols.length > 0) {
+            html += `<li>Test if ${numericCols[0]} follows a normal distribution</li>`;
+            html += `<li>Detect outliers in ${numericCols[0]} using Isolation Forest</li>`;
+        }
+        if (numericCols.length >= 2) {
+            html += `<li>Perform regression with ${numericCols[0]} predicting ${numericCols[1]}</li>`;
+            html += `<li>Test correlation between ${numericCols[0]} and ${numericCols[1]}</li>`;
+        }
+        html += '</ul>';
+        html += '</div></div>';
+
+        html += '</div>'; // Close main container
+        
+        // Add CSS for the statistical analysis tab
+        html += `
+            <style>
+                .statistical-analysis-content {
+                    padding: 1.5rem;
+                }
+                .stats-intro {
+                    color: var(--primary-color);
+                    margin-bottom: 2rem;
+                    font-size: 1.05em;
+                }
+                .stats-category {
+                    margin-bottom: 2.5rem;
+                }
+                .stats-category h4 {
+                    color: var(--text-primary);
+                    margin-bottom: 1rem;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 2px solid var(--primary-color);
+                }
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                    gap: 1rem;
+                }
+                .stat-tool-card {
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 1.25rem;
+                    transition: all 0.3s ease;
+                }
+                .stat-tool-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    border-color: var(--primary-color);
+                }
+                .tool-icon {
+                    font-size: 2rem;
+                    color: var(--primary-color);
+                    margin-bottom: 0.75rem;
+                }
+                .stat-tool-card h5 {
+                    margin: 0 0 0.5rem 0;
+                    color: var(--text-primary);
+                }
+                .stat-tool-card p {
+                    color: var(--text-secondary);
+                    font-size: 0.9em;
+                    margin-bottom: 1rem;
+                }
+                .tool-actions {
+                    margin-bottom: 0.75rem;
+                }
+                .stat-btn {
+                    background: var(--primary-color);
+                    color: white;
+                    border: none;
+                    padding: 0.6rem 1rem;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    width: 100%;
+                    transition: all 0.2s ease;
+                }
+                .stat-btn:hover {
+                    background: var(--primary-hover);
+                    transform: scale(1.02);
+                }
+                .tool-info {
+                    padding-top: 0.75rem;
+                    border-top: 1px solid var(--border-color);
+                }
+                .tool-info small {
+                    color: var(--text-secondary);
+                    font-size: 0.85em;
+                }
+                .custom-stats-input {
+                    background: var(--surface-color);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    border: 1px solid var(--border-color);
+                }
+                .stats-examples {
+                    margin: 0.75rem 0 0 1.5rem;
+                }
+                .stats-examples li {
+                    color: var(--text-secondary);
+                    margin: 0.5rem 0;
+                    font-family: 'Courier New', monospace;
+                    font-size: 0.9em;
+                }
+            </style>
+        `;
+
+        return html;
     }
 
     renderChartGallery() {
@@ -1300,6 +1774,273 @@ class PyDataAssistant {
             sessionStorage.clear();
             window.location.reload();
         }
+    }
+
+    openHelp() {
+        const modal = document.getElementById('helpModal');
+        const helpContent = document.getElementById('helpContent');
+        
+        if (modal && helpContent) {
+            helpContent.innerHTML = this.generateHelpContent();
+            modal.style.display = 'flex';
+        }
+    }
+
+    closeHelp() {
+        const modal = document.getElementById('helpModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    generateHelpContent() {
+        return `
+            <div class="help-sections">
+                <section class="help-section">
+                    <h3><i class="fas fa-rocket"></i> Getting Started</h3>
+                    <ol>
+                        <li>Upload your CSV file by dragging and dropping or clicking the upload button</li>
+                        <li>Wait for the data preview to load</li>
+                        <li>Click on any suggested analysis or type your own question</li>
+                        <li>View results, charts, and insights in the chat interface</li>
+                    </ol>
+                </section>
+
+                <section class="help-section">
+                    <h3><i class="fas fa-chart-line"></i> Basic Analysis Examples</h3>
+                    <div class="example-queries">
+                        <div class="example-query">
+                            <code>Show me the distribution of [column_name]</code>
+                            <p>Creates a histogram showing data distribution</p>
+                        </div>
+                        <div class="example-query">
+                            <code>Create a scatter plot of [column1] vs [column2]</code>
+                            <p>Visualizes relationship between two variables</p>
+                        </div>
+                        <div class="example-query">
+                            <code>Show correlation heatmap</code>
+                            <p>Displays correlations between numeric columns</p>
+                        </div>
+                        <div class="example-query">
+                            <code>Analyze missing values</code>
+                            <p>Identifies and visualizes missing data patterns</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3><i class="fas fa-flask"></i> Advanced Statistical Analysis</h3>
+                    <p style="margin-bottom: 1rem; color: var(--primary-color); font-weight: 600;">
+                        🎉 NEW FEATURES! Professional statistical analysis suite with 11 powerful tools
+                    </p>
+                    
+                    <div class="stats-categories">
+                        <div class="stats-category">
+                            <h4><i class="fas fa-vial"></i> Hypothesis Testing</h4>
+                            <div class="example-queries">
+                                <div class="example-query">
+                                    <code>Test if [column] is normally distributed</code>
+                                    <p>Shapiro-Wilk, D'Agostino-Pearson, Anderson-Darling, KS tests</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Perform t-test between [column1] and [column2]</code>
+                                    <p>Independent/paired t-tests with Cohen's d effect size</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Compare [column] across different [category] groups using ANOVA</code>
+                                    <p>One-way ANOVA with eta-squared effect size</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Chi-square test between [category1] and [category2]</code>
+                                    <p>Independence test with Cramér's V</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Test correlation between [column1] and [column2]</code>
+                                    <p>Pearson, Spearman, and Kendall correlation tests</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-category">
+                            <h4><i class="fas fa-chart-line-up"></i> Regression Analysis</h4>
+                            <div class="example-queries">
+                                <div class="example-query">
+                                    <code>Perform linear regression with [column1] predicting [column2]</code>
+                                    <p>Includes R², RMSE, coefficients, and residual analysis</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Fit polynomial regression (degree 3) for [x] and [y]</code>
+                                    <p>Models non-linear relationships with polynomial curves</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Logistic regression for binary classification of [target]</code>
+                                    <p>Binary outcome prediction with accuracy metrics</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-category">
+                            <h4><i class="fas fa-bullseye"></i> Outlier Detection</h4>
+                            <div class="example-queries">
+                                <div class="example-query">
+                                    <code>Detect outliers in [column] using all methods</code>
+                                    <p>IQR, Z-score, Modified Z-score (MAD), Isolation Forest</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Find outliers using IQR method in [column]</code>
+                                    <p>Interquartile range based outlier detection</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Use Isolation Forest to detect anomalies in [column]</code>
+                                    <p>Machine learning based outlier detection</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-category">
+                            <h4><i class="fas fa-wave-square"></i> Distribution Fitting</h4>
+                            <div class="example-queries">
+                                <div class="example-query">
+                                    <code>Fit distributions to [column] and find best fit</code>
+                                    <p>Tests: normal, exponential, gamma, beta, lognormal, weibull, uniform, chi2, t, f, pareto, logistic, gumbel</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Compare normal and exponential distributions for [column]</code>
+                                    <p>Includes AIC, BIC, log-likelihood, and KS test</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-category">
+                            <h4><i class="fas fa-clock"></i> Time Series Analysis</h4>
+                            <div class="example-queries">
+                                <div class="example-query">
+                                    <code>Test stationarity of [time_series_column]</code>
+                                    <p>Augmented Dickey-Fuller test for time series data</p>
+                                </div>
+                                <div class="example-query">
+                                    <code>Test if [column1] Granger-causes [column2]</code>
+                                    <p>Predictive causality analysis for time series</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-category">
+                            <h4><i class="fas fa-calculator"></i> Summary Statistics</h4>
+                            <div class="example-queries">
+                                <div class="example-query">
+                                    <code>Get comprehensive statistics for [column]</code>
+                                    <p>Mean, median, mode, std, variance, skewness, kurtosis, quartiles, range</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3><i class="fas fa-chart-pie"></i> Visualization Types</h3>
+                    <div class="viz-grid">
+                        <div class="viz-type">
+                            <strong>Histogram</strong>: Distribution analysis
+                        </div>
+                        <div class="viz-type">
+                            <strong>Box Plot</strong>: Outlier detection
+                        </div>
+                        <div class="viz-type">
+                            <strong>Scatter Plot</strong>: Relationships
+                        </div>
+                        <div class="viz-type">
+                            <strong>Line Chart</strong>: Trends over time
+                        </div>
+                        <div class="viz-type">
+                            <strong>Bar Chart</strong>: Categorical comparison
+                        </div>
+                        <div class="viz-type">
+                            <strong>Pie Chart</strong>: Proportions
+                        </div>
+                        <div class="viz-type">
+                            <strong>Heatmap</strong>: Correlations
+                        </div>
+                        <div class="viz-type">
+                            <strong>Violin Plot</strong>: Distribution comparison
+                        </div>
+                        <div class="viz-type">
+                            <strong>Bubble Chart</strong>: 3D relationships
+                        </div>
+                        <div class="viz-type">
+                            <strong>Sunburst</strong>: Hierarchical data
+                        </div>
+                    </div>
+                </section>
+
+                <section class="help-section">
+                    <h3><i class="fas fa-lightbulb"></i> Tips & Best Practices</h3>
+                    <ul>
+                        <li><strong>Be specific</strong>: Mention exact column names in your queries</li>
+                        <li><strong>Use suggestions</strong>: Click suggested analyses after upload</li>
+                        <li><strong>Check data types</strong>: Ensure numeric columns for statistical tests</li>
+                        <li><strong>Handle missing data</strong>: Address missing values before analysis</li>
+                        <li><strong>Verify assumptions</strong>: Test normality before parametric tests</li>
+                        <li><strong>Interpret effect sizes</strong>: Don't rely solely on p-values</li>
+                        <li><strong>Export results</strong>: Save your analysis using the export button</li>
+                    </ul>
+                </section>
+
+                <section class="help-section">
+                    <h3><i class="fas fa-info-circle"></i> API Information</h3>
+                    <p>For developers: Full API documentation is available at 
+                    <a href="/docs" target="_blank" style="color: var(--primary-color);">/docs</a></p>
+                    <p>Statistical Analysis endpoints: <code>/api/v1/statistical-analysis/*</code></p>
+                </section>
+            </div>
+            
+            <style>
+                .help-sections { padding: 1rem; }
+                .help-section { margin-bottom: 2rem; }
+                .help-section h3 { color: var(--primary-color); margin-bottom: 1rem; }
+                .help-section h4 { color: var(--text-primary); margin: 1rem 0 0.5rem 0; font-size: 1.1em; }
+                .help-section ol, .help-section ul { padding-left: 1.5rem; }
+                .help-section li { margin: 0.5rem 0; line-height: 1.6; }
+                .example-queries { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; }
+                .example-query { 
+                    background: var(--surface-color); 
+                    padding: 0.75rem; 
+                    border-radius: 8px;
+                    border-left: 3px solid var(--primary-color);
+                }
+                .example-query code { 
+                    display: block;
+                    background: var(--background-color); 
+                    padding: 0.5rem; 
+                    border-radius: 4px;
+                    margin-bottom: 0.5rem;
+                    font-family: 'Courier New', monospace;
+                    color: var(--primary-color);
+                }
+                .example-query p { 
+                    margin: 0; 
+                    color: var(--text-secondary);
+                    font-size: 0.9em;
+                }
+                .stats-categories { display: flex; flex-direction: column; gap: 1.5rem; }
+                .stats-category {
+                    background: var(--surface-color);
+                    padding: 1rem;
+                    border-radius: 8px;
+                    border: 1px solid var(--border-color);
+                }
+                .viz-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 0.75rem;
+                    margin-top: 0.5rem;
+                }
+                .viz-type {
+                    background: var(--surface-color);
+                    padding: 0.75rem;
+                    border-radius: 6px;
+                    border-left: 3px solid var(--secondary-color);
+                }
+            </style>
+        `;
     }
 
     showNotification(message, type = 'info') {
