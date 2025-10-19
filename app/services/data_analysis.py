@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from io import StringIO
 import sys
 from contextlib import redirect_stdout, redirect_stderr
+from itertools import combinations, permutations
 
 import google.generativeai as genai
 
@@ -122,7 +123,27 @@ def convert_numpy_types(obj):
         except:
             return str(obj)
     else:
-        return obj
+        # Filter out non-serializable objects (sklearn models, complex objects, etc.)
+        # Check if it's a simple type that can be JSON serialized
+        if isinstance(obj, (str, int, float, bool, type(None))):
+            return obj
+        
+        # Try to check if it's a sklearn model or other complex object
+        obj_type = type(obj).__name__
+        obj_module = type(obj).__module__
+        
+        # Skip sklearn models, statsmodels, and other ML objects
+        if any(module in obj_module for module in ['sklearn', 'statsmodels', 'scipy.stats._', 'plotly']):
+            return f"<{obj_type} object - not serializable>"
+        
+        # Try JSON serialization test
+        try:
+            import json
+            json.dumps(obj)
+            return obj
+        except (TypeError, ValueError):
+            # If it can't be serialized, return a string representation
+            return f"<{obj_type} object>"
 
 
 @dataclass 
@@ -350,21 +371,24 @@ INSTRUCTIONS:
 5. ⚠️ CRITICAL: DO NOT include ANY import statements - all modules are ALREADY IMPORTED
 6. ⚠️ CRITICAL: DO NOT use __import__, exec, eval, or any dynamic code execution
 7. ⚠️ CRITICAL: DO NOT return model objects (LinearRegression, IsolationForest, etc.) - only return RESULTS (numbers, strings, arrays)
-8. ⚠️ CRITICAL: For LINEAR REGRESSION, POLYNOMIAL REGRESSION, and STATISTICAL TESTS - DO NOT CREATE VISUALIZATIONS!
-9. ⚠️ CRITICAL: Only use print() for regression results - NO fig.show(), NO px.scatter, NO plotting!
+8. ⚠️ CRITICAL: For statistical analysis - ONLY create visualizations if query EXPLICITLY says "visualize", "create chart", "plot", or "show graph"
+9. ⚠️ CRITICAL: If query says "TEXT FORMAT ONLY" or "Analyze" - use ONLY print() statements, NO visualizations
 10. ⚠️ DO NOT write: from sklearn import..., import scipy, import statsmodels, etc.
 11. Available modules (PRE-IMPORTED - USE DIRECTLY):
    - pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
-   - stats, sp_stats (scipy.stats) - for statistical tests
-   - sm (statsmodels.api) - for advanced statistical models
+   - stats, sp_stats (scipy.stats) - for statistical tests and p-value calculations
+   - sm (statsmodels.api) - ONLY for advanced models (ARIMA, VAR, etc.) - DO NOT use for simple regression
    - adfuller, grangercausalitytests (statsmodels) - for time series
    - LinearRegression, LogisticRegression, PolynomialFeatures (sklearn - USE DIRECTLY)
    - IsolationForest (sklearn.ensemble) - for outlier detection
    - mean_squared_error, r2_score (sklearn.metrics)
    - train_test_split (sklearn.model_selection)
+   - combinations, permutations (itertools) - for variable pair analysis
 12. For summaries: use clear section headers like "### Dataset Overview ###"
-13. For visualizations: ONLY create charts for distribution plots, histograms, box plots - NOT for regression!
-14. For simple queries (overview, describe, summary, regression), just use print() - NO visualization needed
+13. For visualizations: Create charts ONLY when explicitly requested in the query
+14. For simple queries (overview, describe, summary), just use print() - NO visualization needed
+15. ⚠️ CRITICAL: For LINEAR REGRESSION - use sklearn LinearRegression, NOT statsmodels sm.OLS
+16. ⚠️ For p-values in regression - calculate manually using scipy.stats (already imported as 'stats')
 
 STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
 - Normality Test: stats.shapiro(df['column'])
@@ -372,30 +396,64 @@ STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
 - Correlation: df[['col1', 'col2']].corr(method='pearson')
 - ANOVA: stats.f_oneway(group1, group2, group3)
 - Chi-Square: stats.chi2_contingency(pd.crosstab(df['cat1'], df['cat2']))
+- Variable Pairs: list(combinations(numeric_cols, 2))  # combinations is pre-imported
 - Outliers (IQR): Q1 = df['col'].quantile(0.25); Q3 = df['col'].quantile(0.75); IQR = Q3 - Q1
 - Outliers (Z-score): np.abs(stats.zscore(df['col'])) > 3
 - Outliers (Isolation Forest): IsolationForest(contamination=0.1).fit_predict(df[['col']])
 - Linear Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
-  X = df[['predictor_col']].values
-  y = df['target_col'].values
+  # Use sklearn LinearRegression for simple regression (DO NOT use sm/statsmodels for basic regression)
+  # Remove rows with NaN values in predictor or target columns
+  valid_data = df[['predictor_col', 'target_col']].dropna()
+  X = valid_data[['predictor_col']].values
+  y = valid_data['target_col'].values
+  n_removed = len(df) - len(valid_data)
   model = LinearRegression()
   model.fit(X, y)
   predictions = model.predict(X)
   r2 = r2_score(y, predictions)
   rmse = np.sqrt(mean_squared_error(y, predictions))
+  
+  # Calculate p-values using scipy.stats (already imported as 'stats')
+  n = len(valid_data)
+  residuals = y - predictions
+  residual_std_error = np.sqrt(np.sum(residuals**2) / (n - 2))
+  x_mean = np.mean(X)
+  x_std = np.sum((X - x_mean)**2)
+  se_coef = residual_std_error / np.sqrt(x_std)
+  t_stat = model.coef_[0] / se_coef
+  p_value = 2 * (1 - stats.t.cdf(abs(t_stat), n - 2))
+  
   print(f"### Linear Regression Results ###")
+  print(f"Predictor: predictor_col → Target: target_col")
+  if n_removed > 0:
+      print(f"ℹ️ Removed {{n_removed}} rows with missing values ({{n_removed/len(df)*100:.1f}}% of data)")
+  print(f"Sample size: {{len(valid_data)}} rows")
   print(f"R² Score: {{r2:.4f}}")
   print(f"RMSE: {{rmse:.4f}}")
-  print(f"Coefficient: {{model.coef_[0]:.4f}}")
+  print(f"Coefficient: {{model.coef_[0]:.4f}} (p-value: {{p_value:.4f}})")
   print(f"Intercept: {{model.intercept_:.4f}}")
+  print(f"\\n### Interpretation ###")
+  if r2 < 0.1:
+      print(f"⚠️ VERY WEAK: R²={{r2:.4f}} means these variables have almost NO linear relationship.")
+      print(f"💡 Suggestion: Try different variable pairs. Exclude ID columns, postal codes, or indices.")
+  elif r2 < 0.3:
+      print(f"⚠️ WEAK: R²={{r2:.4f}} means only {{r2*100:.1f}}% of variance is explained.")
+      print(f"💡 Suggestion: This model has limited predictive power. Try different variables.")
+  elif r2 < 0.7:
+      print(f"✓ MODERATE: R²={{r2:.4f}} means {{r2*100:.1f}}% of variance is explained.")
+  else:
+      print(f"✅ STRONG: R²={{r2:.4f}} means {{r2*100:.1f}}% of variance is explained.")
+  print(f"\\nEquation: target_col = {{model.coef_[0]:.4f}} * predictor_col + {{model.intercept_:.4f}}")
   print(f"\\nFirst 10 predictions:")
   for i in range(min(10, len(predictions))):
       print(f"  Actual: {{y[i]:.2f}}, Predicted: {{predictions[i]:.2f}}, Residual: {{y[i]-predictions[i]:.2f}}")
   # DO NOT ADD fig.show() or any visualization!
 
 - Polynomial Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
-  X = df[['predictor_col']].values
-  y = df['target_col'].values
+  # Remove rows with NaN values
+  valid_data = df[['predictor_col', 'target_col']].dropna()
+  X = valid_data[['predictor_col']].values
+  y = valid_data['target_col'].values
   poly = PolynomialFeatures(degree=2)
   X_poly = poly.fit_transform(X)
   model = LinearRegression()
@@ -408,7 +466,56 @@ STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
   print(f"RMSE: {{rmse:.4f}}")
   # DO NOT ADD fig.show() or any visualization!
 
+- Find Best Variable Pair for Regression:
+  # Exclude ID-like columns
+  exclude_keywords = ['id', 'postal', 'code', 'index', 'row']
+  numeric_cols = [col for col in df.select_dtypes(include=[np.number]).columns 
+                  if not any(kw in col.lower() for kw in exclude_keywords)]
+  # Calculate all pairwise correlations (combinations is pre-imported)
+  pairs = []
+  for col1, col2 in combinations(numeric_cols, 2):
+      corr = df[[col1, col2]].corr().iloc[0, 1]
+      pairs.append((abs(corr), corr, col1, col2))
+  pairs.sort(reverse=True)
+  print(f"### Top 3 Variable Pairs for Linear Regression ###")
+  for i, (abs_corr, corr, c1, c2) in enumerate(pairs[:3], 1):
+      print(f"{{i}}. {{c1}} → {{c2}}: r={{corr:.4f}}, R²≈{{corr**2:.4f}}")
+
 - Distribution Fitting: stats.norm.fit(df['col']); stats.kstest(df['col'], 'norm', params)
+
+VISUALIZATION EXAMPLES (ONLY when query explicitly requests visualization):
+
+- Linear Regression Visualization (ONLY if query says "visualize" or "create chart"):
+  # Remove rows with NaN values
+  valid_data = df[['predictor_col', 'target_col']].dropna()
+  X = valid_data[['predictor_col']].values
+  y = valid_data['target_col'].values
+  model = LinearRegression()
+  model.fit(X, y)
+  predictions = model.predict(X)
+  r2 = r2_score(y, predictions)
+  # Create simple DataFrame for Plotly
+  viz_df = pd.DataFrame({{'x': valid_data['predictor_col'], 'Actual': y, 'Predicted': predictions}})
+  fig = px.scatter(viz_df, x='x', y='Actual', title=f'Linear Regression (R²={{r2:.3f}})')
+  fig.add_scatter(x=viz_df['x'], y=viz_df['Predicted'], mode='lines', name='Fit')
+  if r2 < 0.3:
+      fig.add_annotation(text=f"⚠️ Weak Correlation (R²={{r2:.3f}})", 
+                         xref="paper", yref="paper", x=0.5, y=0.95, showarrow=False,
+                         font=dict(color="red", size=14))
+  fig.show()
+
+- Box Plot for Outliers (ONLY if query says "visualize"):
+  fig = px.box(df, y='column', title='Outlier Detection')
+  fig.show()
+
+- Histogram with Normal Curve (ONLY if query says "visualize"):
+  fig = px.histogram(df, x='column', nbins=30, title='Normality Test')
+  fig.show()
+
+- Correlation Scatter Plot (ONLY if query says "visualize"):
+  corr = df[['col1', 'col2']].corr().iloc[0,1]
+  fig = px.scatter(df, x='col1', y='col2', title=f'Correlation={{corr:.3f}}', trendline='ols')
+  fig.show()
 
 FORMATTING GUIDELINES:
 - Use "###" for main section headers
@@ -723,7 +830,9 @@ def _execute_code_safely(code: str, df: pd.DataFrame) -> Dict[str, Any]:
             'np': np,
             'px': px,
             'go': go,
-            'df': df.copy()  # Work with a copy to avoid modifying original
+            'df': df.copy(),  # Work with a copy to avoid modifying original
+            'combinations': combinations,
+            'permutations': permutations
         }
         
         # Add statistical libraries if available
@@ -811,6 +920,32 @@ def _execute_code_safely(code: str, df: pd.DataFrame) -> Dict[str, Any]:
 def _process_execution_result(result: Dict[str, Any], query: str) -> QueryResponseData:
     """Process execution result into appropriate response format."""
     
+    # Filter out non-serializable objects from locals (sklearn models, etc.)
+    def filter_serializable_locals(locals_dict):
+        """Remove non-serializable objects like sklearn models from locals."""
+        filtered = {}
+        for key, value in locals_dict.items():
+            # Skip private variables
+            if key.startswith('_'):
+                continue
+            
+            # Skip known non-serializable types
+            value_type = type(value).__name__
+            value_module = type(value).__module__
+            
+            # Skip sklearn models and other ML objects
+            if any(module in value_module for module in ['sklearn', 'statsmodels.', 'scipy.stats._']):
+                continue
+            
+            # Skip functions and classes
+            if callable(value) and not isinstance(value, type):
+                continue
+            
+            # Keep only serializable data
+            filtered[key] = value
+        
+        return filtered
+    
     # Check if there's a plotly figure
     if result.get('figure'):
         return QueryResponseData(
@@ -824,15 +959,18 @@ def _process_execution_result(result: Dict[str, Any], query: str) -> QueryRespon
             }
         )
     
+    # Filter locals to remove non-serializable objects
+    filtered_locals = filter_serializable_locals(result.get('locals', {}))
+    
     # Check if there are statistical results
     output = result.get('output', '')
     if any(keyword in output.lower() for keyword in ['mean', 'std', 'correlation', 'summary', 'describe']):
         stats_data = {
             'response_type': 'statistics',
             'calculation': 'Statistical Analysis',
-            'results': result.get('locals', {}),
+            'results': filtered_locals,
             'interpretation': output,
-            'summary_stats': _extract_summary_stats(result.get('locals', {}))
+            'summary_stats': _extract_summary_stats(filtered_locals)
         }
         return QueryResponseData(
             response_type='statistics',

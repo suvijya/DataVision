@@ -575,6 +575,88 @@ class PyDataAssistant {
         }, 300);
     }
 
+    runCustomStatisticalPrompt() {
+        // Get custom prompt from textarea
+        const promptTextarea = document.getElementById('customStatsPrompt');
+        if (!promptTextarea) {
+            this.showError('Custom prompt input not found');
+            return;
+        }
+        
+        const userPrompt = promptTextarea.value.trim();
+        if (!userPrompt) {
+            this.showError('Please enter a statistical query first');
+            return;
+        }
+        
+        // Get available columns for context enhancement
+        const preview = this.currentDataPreview;
+        if (!preview) {
+            this.showError('No data loaded');
+            return;
+        }
+        
+        const columns = preview.columns || [];
+        const dtypes = preview.dtypes || {};
+        
+        const numericCols = columns.filter(col => 
+            dtypes[col] && (dtypes[col].includes('int') || dtypes[col].includes('float'))
+        );
+        const categoricalCols = columns.filter(col => 
+            dtypes[col] && dtypes[col].includes('object')
+        );
+        
+        // Enhance the prompt with statistical context
+        let enhancedPrompt = userPrompt;
+        
+        // Add column context if not already mentioned
+        const mentionsColumns = columns.some(col => 
+            userPrompt.toLowerCase().includes(col.toLowerCase())
+        );
+        
+        if (!mentionsColumns && numericCols.length > 0) {
+            enhancedPrompt += `\n\nContext: Dataset has numeric columns: ${numericCols.join(', ')}`;
+            if (categoricalCols.length > 0) {
+                enhancedPrompt += ` and categorical columns: ${categoricalCols.join(', ')}`;
+            }
+        }
+        
+        // Add statistical method hints based on keywords
+        const keywords = userPrompt.toLowerCase();
+        
+        if (keywords.includes('normal') || keywords.includes('distribution')) {
+            enhancedPrompt += '\n\n📊 Use Shapiro-Wilk, Anderson-Darling, and Kolmogorov-Smirnov normality tests with p-values and test statistics.';
+        }
+        
+        if (keywords.includes('outlier')) {
+            enhancedPrompt += '\n\n📊 Use multiple outlier detection methods: IQR, Z-score, Modified Z-score (MAD), and Isolation Forest.';
+        }
+        
+        if (keywords.includes('correlation') || keywords.includes('correlate')) {
+            enhancedPrompt += '\n\n📊 Calculate Pearson, Spearman, and Kendall correlation coefficients with p-values.';
+        }
+        
+        if (keywords.includes('regression') || keywords.includes('predict')) {
+            enhancedPrompt += '\n\n📊 Include R², RMSE, coefficients, p-values, and residual analysis. Remove rows with missing values using .dropna() before fitting.';
+        }
+        
+        if (keywords.includes('test') && (keywords.includes('difference') || keywords.includes('compare'))) {
+            enhancedPrompt += '\n\n📊 Use appropriate hypothesis tests (t-test, ANOVA, chi-square) with effect sizes and interpretation.';
+        }
+        
+        // Add instruction for statistical libraries
+        enhancedPrompt += '\n\n⚠️ Use pre-imported statistical libraries (scipy.stats, sklearn, statsmodels) - DO NOT add import statements.';
+        
+        console.log('Original prompt:', userPrompt);
+        console.log('Enhanced prompt:', enhancedPrompt);
+        
+        // Execute the enhanced query
+        this.executeStatisticalQuery(enhancedPrompt);
+        
+        // Clear the textarea
+        promptTextarea.value = '';
+    }
+
     switchTab(tabName) {
         // Update active tab
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -868,6 +950,25 @@ class PyDataAssistant {
         html += '<h3><i class="fas fa-flask"></i> Professional Statistical Analysis Suite</h3>';
         html += '<p class="stats-intro">🎉 <strong>11 Advanced Statistical Tools</strong> - Click any analysis below to run it on your data!</p>';
         
+        // Custom Prompt Input Section (TOP OF PAGE)
+        html += '<div class="custom-stats-prompt-section">';
+        html += '<h4><i class="fas fa-keyboard"></i> Custom Statistical Query</h4>';
+        html += '<p class="prompt-description">Type your own analysis request and we\'ll automatically enhance it with statistical context:</p>';
+        html += '<div class="custom-prompt-container">';
+        html += '<textarea id="customStatsPrompt" class="custom-stats-textarea" placeholder="Example: Test if my data is normally distributed\nExample: Find correlations between all numeric columns\nExample: Detect outliers in my dataset\nExample: Perform regression analysis on Sales vs Profit" rows="3"></textarea>';
+        html += '<div class="prompt-actions">';
+        html += '<button class="stat-btn-primary" onclick="window.pyDataAssistant.runCustomStatisticalPrompt()"><i class="fas fa-magic"></i> Enhance & Run Analysis</button>';
+        html += '<button class="stat-btn-secondary" onclick="document.getElementById(\'customStatsPrompt\').value=\'\'"><i class="fas fa-eraser"></i> Clear</button>';
+        html += '</div>';
+        html += '<div class="prompt-hints">';
+        html += '<small><i class="fas fa-info-circle"></i> <strong>Available columns:</strong> ';
+        if (numericCols.length > 0) html += `<span class="hint-badge">Numeric: ${numericCols.slice(0, 3).join(', ')}${numericCols.length > 3 ? '...' : ''}</span>`;
+        if (categoricalCols.length > 0) html += ` <span class="hint-badge">Categorical: ${categoricalCols.slice(0, 3).join(', ')}${categoricalCols.length > 3 ? '...' : ''}</span>`;
+        html += '</small>';
+        html += '</div>';
+        html += '</div>';
+        html += '</div>';
+        
         // Hypothesis Testing
         html += '<div class="stats-category">';
         html += '<h4><i class="fas fa-vial"></i> Hypothesis Testing</h4>';
@@ -879,14 +980,17 @@ class PyDataAssistant {
                 <div class="stat-tool-card">
                     <div class="tool-icon"><i class="fas fa-chart-bell"></i></div>
                     <h5>Normality Tests</h5>
-                    <p>Test if data follows normal distribution using 4 methods</p>
-                    <div class="tool-actions">
-                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Test if ${numericCols[0]} is normally distributed using all methods')">
-                            Test ${numericCols[0]}
+                    <p>Test if data follows normal distribution</p>
+                    <div class="tool-actions" style="display: flex; gap: 8px;">
+                        <button class="stat-btn" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Test if ${numericCols[0]} is normally distributed using Shapiro-Wilk, Anderson-Darling, and Kolmogorov-Smirnov tests. Show test statistics and p-values in TEXT FORMAT ONLY')">
+                            <i class="fas fa-list"></i> Analyze
+                        </button>
+                        <button class="stat-btn stat-btn-viz" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Create a histogram with normal distribution overlay for ${numericCols[0]} to visualize normality')">
+                            <i class="fas fa-chart-histogram"></i> Visualize
                         </button>
                     </div>
                     <div class="tool-info">
-                        <small><strong>Methods:</strong> Shapiro-Wilk, D'Agostino-Pearson, Anderson-Darling, KS</small>
+                        <small><strong>Analyze:</strong> Shapiro-Wilk, Anderson-Darling, KS | <strong>Visualize:</strong> Histogram + normal curve</small>
                     </div>
                 </div>
             `;
@@ -956,13 +1060,16 @@ class PyDataAssistant {
                     <div class="tool-icon"><i class="fas fa-link"></i></div>
                     <h5>Correlation Analysis</h5>
                     <p>Test correlation significance (3 methods)</p>
-                    <div class="tool-actions">
-                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Test correlation between ${numericCols[0]} and ${numericCols[1]} using Pearson, Spearman, and Kendall methods')">
-                            ${numericCols[0]} vs ${numericCols[1]}
+                    <div class="tool-actions" style="display: flex; gap: 8px;">
+                        <button class="stat-btn" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Test correlation between ${numericCols[0]} and ${numericCols[1]} using Pearson, Spearman, and Kendall methods. Show coefficients and p-values in TEXT FORMAT ONLY')">
+                            <i class="fas fa-list"></i> Analyze
+                        </button>
+                        <button class="stat-btn stat-btn-viz" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Create a scatter plot showing correlation between ${numericCols[0]} and ${numericCols[1]} with trend line and Pearson correlation coefficient')">
+                            <i class="fas fa-chart-scatter"></i> Visualize
                         </button>
                     </div>
                     <div class="tool-info">
-                        <small><strong>Methods:</strong> Pearson, Spearman, Kendall</small>
+                        <small><strong>Analyze:</strong> Pearson, Spearman, Kendall | <strong>Visualize:</strong> Scatter plot with trend line</small>
                     </div>
                 </div>
             `;
@@ -981,13 +1088,16 @@ class PyDataAssistant {
                     <div class="tool-icon"><i class="fas fa-search"></i></div>
                     <h5>Advanced Outlier Detection</h5>
                     <p>Detect anomalies using 4 different methods</p>
-                    <div class="tool-actions">
-                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Detect outliers in ${numericCols[0]} using all methods: IQR, Z-score, Modified Z-score (MAD), and Isolation Forest')">
-                            Detect in ${numericCols[0]}
+                    <div class="tool-actions" style="display: flex; gap: 8px;">
+                        <button class="stat-btn" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Detect outliers in ${numericCols[0]} using all methods: IQR, Z-score, Modified Z-score (MAD), and Isolation Forest. Show counts and threshold values in TEXT FORMAT ONLY')">
+                            <i class="fas fa-list"></i> Analyze
+                        </button>
+                        <button class="stat-btn stat-btn-viz" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Create a box plot for ${numericCols[0]} to visualize outliers with IQR method. Highlight outliers in red')">
+                            <i class="fas fa-chart-box"></i> Visualize
                         </button>
                     </div>
                     <div class="tool-info">
-                        <small><strong>Methods:</strong> IQR, Z-score, Modified Z-score (MAD), Isolation Forest</small>
+                        <small><strong>Analyze:</strong> IQR, Z-score, MAD, Isolation Forest | <strong>Visualize:</strong> Box plot with outliers</small>
                     </div>
                 </div>
             `;
@@ -1001,18 +1111,37 @@ class PyDataAssistant {
         html += '<div class="stats-grid">';
         
         if (numericCols.length >= 2) {
+            // Smart variable selection: Exclude ID-like columns (Postal Code, Row ID, etc.)
+            const meaningfulCols = numericCols.filter(col => 
+                !col.toLowerCase().includes('id') && 
+                !col.toLowerCase().includes('postal') &&
+                !col.toLowerCase().includes('code') &&
+                !col.toLowerCase().includes('index')
+            );
+            
+            const predictor = meaningfulCols.length >= 2 ? meaningfulCols[0] : numericCols[0];
+            const target = meaningfulCols.length >= 2 ? meaningfulCols[1] : numericCols[1];
+            
             html += `
                 <div class="stat-tool-card">
                     <div class="tool-icon"><i class="fas fa-chart-line"></i></div>
                     <h5>Linear Regression</h5>
-                    <p>Model linear relationships with text-based analysis</p>
-                    <div class="tool-actions">
-                        <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform linear regression with ${numericCols[0]} as predictor and ${numericCols[1]} as target. Show R², RMSE, coefficients, and first 10 predictions in TEXT FORMAT ONLY - do not create any visualization')">
-                            ${numericCols[0]} → ${numericCols[1]}
+                    <p>Model linear relationships between variables</p>
+                    <div class="tool-actions" style="display: flex; gap: 8px;">
+                        <button class="stat-btn" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform linear regression with ${predictor} as predictor and ${target} as target. Show R², RMSE, coefficients, and interpretation. IMPORTANT: If R² is below 0.3, warn that these variables have weak correlation and suggest trying different variable pairs. Show first 10 predictions in TEXT FORMAT ONLY - do not create any visualization')">
+                            <i class="fas fa-list"></i> Analyze
+                        </button>
+                        <button class="stat-btn stat-btn-viz" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Create a scatter plot showing ${target} vs ${predictor} with linear regression line. Include regression equation and R² score. IMPORTANT: If R² is below 0.3, add a warning annotation that this is a weak correlation')">
+                            <i class="fas fa-chart-scatter"></i> Visualize
                         </button>
                     </div>
                     <div class="tool-info">
-                        <small><strong>Text Output:</strong> R², RMSE, coefficients, sample predictions</small>
+                        <small><strong>Current:</strong> ${predictor} → ${target} | <strong>Tip:</strong> Click "Find Best Pair" for strongest correlation</small>
+                    </div>
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                        <button class="stat-btn" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);" onclick="window.pyDataAssistant.executeStatisticalQuery('Find the best variable pair for linear regression by calculating correlation between all numeric columns. Show the top 3 pairs with highest absolute correlation coefficients and their R² values. Exclude ID columns, postal codes, and index columns. Show results in TEXT FORMAT ONLY')">
+                            <i class="fas fa-wand-magic"></i> Find Best Pair (Auto-Select)
+                        </button>
                     </div>
                 </div>
             `;
@@ -1022,14 +1151,17 @@ class PyDataAssistant {
                     <div class="stat-tool-card">
                         <div class="tool-icon"><i class="fas fa-bezier-curve"></i></div>
                         <h5>Polynomial Regression</h5>
-                        <p>Model non-linear relationships (text output)</p>
-                        <div class="tool-actions">
-                            <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform polynomial regression (degree 2) with ${numericCols[0]} and ${numericCols[1]}. Show R², RMSE, coefficients in TEXT FORMAT ONLY - do not create any visualization')">
-                                Polynomial Fit
+                        <p>Model non-linear relationships with curves</p>
+                        <div class="tool-actions" style="display: flex; gap: 8px;">
+                            <button class="stat-btn" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Perform polynomial regression (degree 2) with ${numericCols[0]} and ${numericCols[1]}. Show R², RMSE, coefficients in TEXT FORMAT ONLY - do not create any visualization')">
+                                <i class="fas fa-list"></i> Analyze
+                            </button>
+                            <button class="stat-btn stat-btn-viz" style="flex: 1;" onclick="window.pyDataAssistant.executeStatisticalQuery('Create a scatter plot showing ${numericCols[1]} vs ${numericCols[0]} with polynomial regression curve (degree 2). Show polynomial equation and R² score')">
+                                <i class="fas fa-chart-line"></i> Visualize
                             </button>
                         </div>
                         <div class="tool-info">
-                            <small><strong>Text Output:</strong> Polynomial coefficients, R², RMSE</small>
+                            <small><strong>Analyze:</strong> Coefficients, R², RMSE | <strong>Visualize:</strong> Scatter + polynomial curve</small>
                         </div>
                     </div>
                 `;
@@ -1176,6 +1308,16 @@ class PyDataAssistant {
                     background: var(--primary-hover);
                     transform: scale(1.02);
                 }
+                .stat-btn-viz {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+                .stat-btn-viz:hover {
+                    background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+                }
+                .stat-btn i {
+                    margin-right: 0.4rem;
+                }
                 .tool-info {
                     padding-top: 0.75rem;
                     border-top: 1px solid var(--border-color);
@@ -1198,6 +1340,111 @@ class PyDataAssistant {
                     margin: 0.5rem 0;
                     font-family: 'Courier New', monospace;
                     font-size: 0.9em;
+                }
+                
+                /* Custom Prompt Section Styles */
+                .custom-stats-prompt-section {
+                    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+                    border: 2px solid var(--primary-color);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    margin-bottom: 2rem;
+                }
+                .custom-stats-prompt-section h4 {
+                    color: var(--primary-color);
+                    margin: 0 0 0.5rem 0;
+                }
+                .prompt-description {
+                    color: var(--text-secondary);
+                    margin-bottom: 1rem;
+                    font-size: 0.95em;
+                }
+                .custom-prompt-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+                .custom-stats-textarea {
+                    width: 100%;
+                    padding: 1rem;
+                    border: 2px solid var(--border-color);
+                    border-radius: 8px;
+                    background: var(--surface-color);
+                    color: var(--text-primary);
+                    font-family: 'Segoe UI', system-ui, sans-serif;
+                    font-size: 0.95em;
+                    resize: vertical;
+                    min-height: 80px;
+                    transition: all 0.3s ease;
+                }
+                .custom-stats-textarea:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+                .custom-stats-textarea::placeholder {
+                    color: var(--text-secondary);
+                    opacity: 0.6;
+                }
+                .prompt-actions {
+                    display: flex;
+                    gap: 0.75rem;
+                }
+                .stat-btn-primary {
+                    flex: 1;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 1em;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                }
+                .stat-btn-primary:hover {
+                    background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+                }
+                .stat-btn-primary i {
+                    margin-right: 0.5rem;
+                }
+                .stat-btn-secondary {
+                    background: var(--surface-color);
+                    color: var(--text-secondary);
+                    border: 2px solid var(--border-color);
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 1em;
+                    transition: all 0.3s ease;
+                }
+                .stat-btn-secondary:hover {
+                    background: var(--border-color);
+                    border-color: var(--text-secondary);
+                }
+                .stat-btn-secondary i {
+                    margin-right: 0.5rem;
+                }
+                .prompt-hints {
+                    background: var(--surface-color);
+                    padding: 0.75rem;
+                    border-radius: 6px;
+                    border-left: 3px solid var(--primary-color);
+                }
+                .prompt-hints small {
+                    color: var(--text-secondary);
+                }
+                .hint-badge {
+                    display: inline-block;
+                    background: var(--primary-color);
+                    color: white;
+                    padding: 0.2rem 0.6rem;
+                    border-radius: 4px;
+                    font-size: 0.85em;
+                    margin: 0.2rem;
                 }
             </style>
         `;
@@ -1380,13 +1627,30 @@ class PyDataAssistant {
         console.log('Full response:', response);
         console.log('Response type:', response_type);
         console.log('Data object:', data);
+        console.log('Data keys:', Object.keys(data || {}));
         console.log('Message:', message);
         
         // Handle different response types
         switch (response_type) {
             case 'plot':
                 console.log('Handling plot response');
-                this.addPlotMessage(data, message);
+                console.log('data.data:', data.data);
+                console.log('data.type:', data.type);
+                
+                // Check if data has MIME type wrapper (e.g., {'application/vnd.plotly.v1+json': {...}})
+                let plotData = data;
+                if (data['application/vnd.plotly.v1+json']) {
+                    console.log('Detected Plotly MIME type wrapper, extracting...');
+                    plotData = { data: data['application/vnd.plotly.v1+json'], title: data.title, type: data.type };
+                } else if (data['text/html']) {
+                    console.log('Detected HTML wrapper, extracting...');
+                    // Skip HTML and use the plotly json if available
+                    if (data['application/vnd.plotly.v1+json']) {
+                        plotData = { data: data['application/vnd.plotly.v1+json'], title: data.title, type: data.type };
+                    }
+                }
+                
+                this.addPlotMessage(plotData, message);
                 break;
             case 'statistics':
             case 'insight':
