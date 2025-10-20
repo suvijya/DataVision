@@ -1703,6 +1703,194 @@ class PyDataAssistant {
     }
 
     renderChartGallery() {
+        // Get dataset columns and types for smart suggestions
+        const preview = this.currentDataPreview;
+        const columns = preview ? (preview.columns || []) : [];
+        const dtypes = preview ? (preview.dtypes || {}) : {};
+        
+        // Analyze dataset structure
+        const numericCols = columns.filter(col => 
+            dtypes[col] && (dtypes[col].includes('int') || dtypes[col].includes('float'))
+        );
+        const categoricalCols = columns.filter(col => 
+            dtypes[col] && dtypes[col].includes('object')
+        );
+        
+        // Helper function to generate smart prompts for each chart type
+        const generateSmartPrompts = (chartName, numCols, catCols) => {
+            const prompts = [];
+            
+            switch(chartName) {
+                case 'Bar Chart':
+                    if (numCols.length >= 1 && catCols.length >= 1) {
+                        prompts.push(`Bar chart of ${numCols[0]} by ${catCols[0]}`);
+                        prompts.push(`Compare ${numCols[0]} across different ${catCols[0]} categories`);
+                        if (catCols.length >= 2) {
+                            prompts.push(`Bar chart showing ${numCols[0]} grouped by ${catCols[0]} and ${catCols[1]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Histogram':
+                    if (numCols.length >= 1) {
+                        prompts.push(`Histogram of ${numCols[0]} distribution`);
+                        prompts.push(`Show ${numCols[0]} distribution with 20 bins`);
+                        if (numCols.length >= 2) {
+                            prompts.push(`Overlayed histograms comparing ${numCols[0]} and ${numCols[1]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Box Plot':
+                    if (numCols.length >= 1 && catCols.length >= 1) {
+                        prompts.push(`Box plot of ${numCols[0]} by ${catCols[0]}`);
+                        prompts.push(`Compare ${numCols[0]} distributions across ${catCols[0]} groups`);
+                    } else if (numCols.length >= 2) {
+                        prompts.push(`Side-by-side box plots of ${numCols[0]} and ${numCols[1]}`);
+                    }
+                    break;
+                    
+                case 'Violin Plot':
+                    if (numCols.length >= 1 && catCols.length >= 1) {
+                        prompts.push(`Violin plot of ${numCols[0]} by ${catCols[0]}`);
+                        prompts.push(`Show distribution of ${numCols[0]} across ${catCols[0]} categories`);
+                    }
+                    break;
+                    
+                case 'Scatter Plot':
+                    if (numCols.length >= 2) {
+                        prompts.push(`Scatter plot of ${numCols[0]} vs ${numCols[1]}`);
+                        if (catCols.length >= 1) {
+                            prompts.push(`Scatter plot ${numCols[0]} vs ${numCols[1]} colored by ${catCols[0]}`);
+                        }
+                        if (numCols.length >= 3) {
+                            prompts.push(`Scatter ${numCols[0]} vs ${numCols[1]} with bubble size ${numCols[2]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Bubble Chart':
+                    if (numCols.length >= 3) {
+                        prompts.push(`Bubble chart: ${numCols[0]} vs ${numCols[1]}, size = ${numCols[2]}`);
+                        if (catCols.length >= 1) {
+                            prompts.push(`Bubble chart ${numCols[0]} vs ${numCols[1]} sized by ${numCols[2]}, colored by ${catCols[0]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Heatmap':
+                    if (numCols.length >= 2) {
+                        prompts.push(`Correlation heatmap of all numeric columns`);
+                        prompts.push(`Heatmap showing relationships between ${numCols.slice(0, 3).join(', ')}`);
+                    }
+                    break;
+                    
+                case 'Line Chart':
+                    if (numCols.length >= 2) {
+                        prompts.push(`Line chart of ${numCols[0]} over ${numCols[1]}`);
+                        prompts.push(`Time series plot showing ${numCols[0]} trend`);
+                        if (catCols.length >= 1) {
+                            prompts.push(`Multiple line chart of ${numCols[0]} by ${catCols[0]} over time`);
+                        }
+                    }
+                    break;
+                    
+                case 'Pie Chart':
+                    if (catCols.length >= 1 && numCols.length >= 1) {
+                        prompts.push(`Pie chart of ${numCols[0]} by ${catCols[0]}`);
+                        prompts.push(`Show percentage breakdown of ${catCols[0]} categories`);
+                    }
+                    break;
+                    
+                case 'Donut Chart':
+                    if (catCols.length >= 1 && numCols.length >= 1) {
+                        prompts.push(`Donut chart showing ${numCols[0]} by ${catCols[0]}`);
+                        prompts.push(`${catCols[0]} distribution as donut chart`);
+                    }
+                    break;
+                    
+                case 'Sunburst':
+                    if (catCols.length >= 2 && numCols.length >= 1) {
+                        prompts.push(`Sunburst chart of ${numCols[0]} by ${catCols[0]} and ${catCols[1]}`);
+                        prompts.push(`Hierarchical sunburst: ${catCols[0]} → ${catCols[1]} with ${numCols[0]} values`);
+                    }
+                    break;
+                    
+                case 'Treemap':
+                    if (catCols.length >= 1 && numCols.length >= 1) {
+                        prompts.push(`Treemap of ${numCols[0]} by ${catCols[0]}`);
+                        if (catCols.length >= 2) {
+                            prompts.push(`Treemap showing ${numCols[0]} grouped by ${catCols[0]} and ${catCols[1]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Area Chart':
+                    if (numCols.length >= 2) {
+                        prompts.push(`Area chart of ${numCols[0]} over ${numCols[1]}`);
+                        prompts.push(`Cumulative area chart showing ${numCols[0]} trend`);
+                    }
+                    break;
+                    
+                case '3D Scatter':
+                    if (numCols.length >= 3) {
+                        prompts.push(`3D scatter: ${numCols[0]} vs ${numCols[1]} vs ${numCols[2]}`);
+                        if (catCols.length >= 1) {
+                            prompts.push(`3D scatter of ${numCols[0]}, ${numCols[1]}, ${numCols[2]} colored by ${catCols[0]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Funnel Chart':
+                    if (numCols.length >= 1 && catCols.length >= 1) {
+                        prompts.push(`Funnel chart of ${numCols[0]} by ${catCols[0]} stages`);
+                        prompts.push(`Conversion funnel showing ${numCols[0]} across ${catCols[0]}`);
+                    }
+                    break;
+                    
+                case 'Waterfall':
+                    if (numCols.length >= 1 && catCols.length >= 1) {
+                        prompts.push(`Waterfall chart showing ${numCols[0]} breakdown by ${catCols[0]}`);
+                        prompts.push(`Cumulative effect of ${numCols[0]} across ${catCols[0]} categories`);
+                    }
+                    break;
+                    
+                case 'Density Plot':
+                    if (numCols.length >= 1) {
+                        prompts.push(`Density plot of ${numCols[0]}`);
+                        if (catCols.length >= 1) {
+                            prompts.push(`Overlayed density plots of ${numCols[0]} by ${catCols[0]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Strip Plot':
+                    if (numCols.length >= 1 && catCols.length >= 1) {
+                        prompts.push(`Strip plot of ${numCols[0]} by ${catCols[0]}`);
+                        prompts.push(`Show all ${numCols[0]} data points grouped by ${catCols[0]}`);
+                    }
+                    break;
+                    
+                case 'Parallel Coordinates':
+                    if (numCols.length >= 3) {
+                        prompts.push(`Parallel coordinates plot of ${numCols.slice(0, 4).join(', ')}`);
+                        if (catCols.length >= 1) {
+                            prompts.push(`Parallel coordinates colored by ${catCols[0]}`);
+                        }
+                    }
+                    break;
+                    
+                case 'Contour Plot':
+                    if (numCols.length >= 3) {
+                        prompts.push(`Contour plot of ${numCols[2]} over ${numCols[0]} and ${numCols[1]}`);
+                        prompts.push(`2D density contours for ${numCols[0]} vs ${numCols[1]}`);
+                    }
+                    break;
+            }
+            
+            return prompts;
+        };
+        
         const chartTypes = [
             {
                 category: 'Distribution & Comparison',
@@ -1770,7 +1958,16 @@ class PyDataAssistant {
 
         let html = '<div class="chart-gallery-content">';
         html += '<h3><i class="fas fa-palette"></i> Available Visualization Types</h3>';
-        html += '<p class="gallery-intro">Choose from 25+ chart types to analyze and visualize your data. Click any example to try it!</p>';
+        html += '<p class="gallery-intro">Choose from 25+ chart types to analyze and visualize your data. Smart suggestions based on your dataset!</p>';
+        
+        // Show dataset info if available
+        if (numericCols.length > 0 || categoricalCols.length > 0) {
+            html += '<div class="dataset-info-banner">';
+            html += '<i class="fas fa-database"></i> <strong>Your Dataset:</strong> ';
+            if (numericCols.length > 0) html += `<span class="hint-badge">📊 ${numericCols.length} numeric column${numericCols.length > 1 ? 's' : ''}</span> `;
+            if (categoricalCols.length > 0) html += `<span class="hint-badge">🏷️ ${categoricalCols.length} categorical column${categoricalCols.length > 1 ? 's' : ''}</span>`;
+            html += '</div>';
+        }
         
         chartTypes.forEach(category => {
             html += `<div class="chart-category">`;
@@ -1778,6 +1975,9 @@ class PyDataAssistant {
             html += `<div class="charts-grid">`;
             
             category.charts.forEach(chart => {
+                // Generate smart prompts for this chart based on dataset
+                const smartPrompts = generateSmartPrompts(chart.name, numericCols, categoricalCols);
+                
                 html += `
                     <div class="chart-card">
                         <div class="chart-icon">
@@ -1785,10 +1985,51 @@ class PyDataAssistant {
                         </div>
                         <div class="chart-info">
                             <h5>${chart.name}</h5>
-                            <p class="chart-description">${chart.description}</p>
+                            <p class="chart-description">${chart.description}</p>`;
+                
+                // Add smart suggestions if available
+                if (smartPrompts.length > 0) {
+                    html += `
+                        <details class="smart-prompts-section">
+                            <summary class="smart-prompts-toggle">
+                                <i class="fas fa-lightbulb"></i> 💡 ${smartPrompts.length} Smart Suggestion${smartPrompts.length > 1 ? 's' : ''} for Your Data
+                            </summary>
+                            <div class="smart-prompts-list">`;
+                    
+                    smartPrompts.forEach((prompt, index) => {
+                        html += `
+                            <button class="smart-prompt-btn" onclick="window.pyDataAssistant.tryChartExample('${prompt.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-chart-line"></i> ${prompt}
+                            </button>`;
+                    });
+                    
+                    html += `
+                            </div>
+                        </details>`;
+                } else {
+                    // Show a message if data requirements aren't met
+                    html += `
+                        <div class="no-prompts-notice">
+                            <i class="fas fa-info-circle"></i> <small>Requires `;
+                    
+                    // Determine what's needed
+                    if (chart.name === 'Bar Chart' || chart.name === 'Box Plot' || chart.name === 'Pie Chart') {
+                        html += 'numeric and categorical columns';
+                    } else if (chart.name === 'Scatter Plot' || chart.name === 'Heatmap') {
+                        html += '2+ numeric columns';
+                    } else if (chart.name === 'Bubble Chart' || chart.name === '3D Scatter') {
+                        html += '3+ numeric columns';
+                    } else {
+                        html += 'specific column types';
+                    }
+                    
+                    html += '</small></div>';
+                }
+                
+                html += `
                             <div class="chart-example">
-                                <button class="try-chart-btn" onclick="window.pyDataAssistant.tryChartExample('${chart.example.replace(/'/g, "\\'")}')">
-                                    <i class="fas fa-play"></i> Try: "${chart.example}"
+                                <button class="try-chart-btn-generic" onclick="window.pyDataAssistant.tryChartExample('${chart.example.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-play-circle"></i> Try Generic Example
                                 </button>
                             </div>
                         </div>
