@@ -382,8 +382,14 @@ INSTRUCTIONS:
    - CORRECT: print(f"R² Score: {r2:.4f}")
    - WRONG: print(f"R² Score: {{r2:.4f}}")  ❌ This causes __import__ error!
 9. ⚠️ CRITICAL: If query says "TEXT FORMAT ONLY" or "Analyze" - use ONLY print() statements, NO visualizations
-10. ⚠️ DO NOT write: from sklearn import..., import scipy, import statsmodels, etc.
-11. Available modules (PRE-IMPORTED - USE DIRECTLY):
+10. ⚠️ CRITICAL DATAFRAME SAFETY: Always check if row/column exists BEFORE accessing with .loc or .iloc
+   - CORRECT: if 'column_name' in df.index: value = df.loc['column_name', 'other_col']
+   - CORRECT: value = df.loc['column_name', 'other_col'] if 'column_name' in df.index else 0
+   - WRONG: value = df.loc['column_name', 'other_col']  ❌ This causes KeyError if row doesn't exist!
+   - For filtered DataFrames: ALWAYS check existence after filtering, especially for missing value analysis
+   - Example: missing_df = df.isnull().sum(); if len(missing_df[missing_df > 0]) > 0: ...
+11. ⚠️ DO NOT write: from sklearn import..., import scipy, import statsmodels, etc.
+12. Available modules (PRE-IMPORTED - USE DIRECTLY):
    - pd (pandas), np (numpy), px (plotly.express), go (plotly.graph_objects)
    - stats, sp_stats (scipy.stats) - for statistical tests and p-value calculations
    - sm (statsmodels.api) - ONLY for advanced models (ARIMA, VAR, etc.) - DO NOT use for simple regression
@@ -393,11 +399,11 @@ INSTRUCTIONS:
    - mean_squared_error, r2_score (sklearn.metrics)
    - train_test_split (sklearn.model_selection)
    - combinations, permutations (itertools) - for variable pair analysis
-12. For summaries: use clear section headers like "### Dataset Overview ###"
-13. For visualizations: Create charts ONLY when explicitly requested in the query
-14. For simple queries (overview, describe, summary), just use print() - NO visualization needed
-15. ⚠️ CRITICAL: For LINEAR REGRESSION - use sklearn LinearRegression, NOT statsmodels sm.OLS
-16. ⚠️ For p-values in regression - calculate manually using scipy.stats (already imported as 'stats')
+13. For summaries: use clear section headers like "### Dataset Overview ###"
+14. For visualizations: Create charts ONLY when explicitly requested in the query
+15. For simple queries (overview, describe, summary), just use print() - NO visualization needed
+16. ⚠️ CRITICAL: For LINEAR REGRESSION - use sklearn LinearRegression, NOT statsmodels sm.OLS
+17. ⚠️ For p-values in regression - calculate manually using scipy.stats (already imported as 'stats')
 
 STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
 - Normality Test: stats.shapiro(df['column'])
