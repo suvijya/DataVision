@@ -53,7 +53,7 @@ class SessionStartResponse(BaseModel):
 class QueryRequest(BaseModel):
     """Request model for data analysis queries."""
     session_id: str = Field(..., description="Session identifier")
-    query: str = Field(..., min_length=1, max_length=500, description="Natural language query")
+    query: str = Field(..., min_length=1, max_length=2000, description="Natural language query")
     conversation_context: Optional[str] = Field(None, description="Previous conversation context")
     
     @validator('query')

@@ -992,6 +992,22 @@ class PyDataAssistant {
                     <div class="tool-info">
                         <small><strong>Analyze:</strong> Shapiro-Wilk, Anderson-Darling, KS | <strong>Visualize:</strong> Histogram + normal curve</small>
                     </div>
+                    <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                            <i class="fas fa-lightbulb"></i> 💡 Smart Prompts
+                        </summary>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Test normality for all numeric columns. For each column, show Shapiro-Wilk test result, skewness, kurtosis, and verdict (normal/not normal at α=0.05). TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Batch Normality Testing
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='For ${numericCols[0]}: (1) Test normality, (2) If not normal, apply log/sqrt/Box-Cox transformation, (3) Re-test after transformation. Which transformation works best? TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Transform to Normality
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Create Q-Q plot statistics for ${numericCols[0]}. Calculate theoretical quantiles, actual quantiles, and correlation coefficient. Report deviations from normality. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Q-Q Plot Analysis
+                            </button>
+                        </div>
+                    </details>
                 </div>
             `;
         }
@@ -1030,6 +1046,22 @@ class PyDataAssistant {
                     <div class="tool-info">
                         <small><strong>Includes:</strong> F-statistic, p-value, eta-squared</small>
                     </div>
+                    <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                            <i class="fas fa-lightbulb"></i> 💡 Smart Prompts
+                        </summary>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Perform ANOVA for ${numericCols[0]} across ${categoricalCols[0]} groups. Include F-statistic, p-value, eta-squared. If significant, run Tukey HSD post-hoc test to find which groups differ. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                ANOVA + Post-Hoc Tests
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Before ANOVA: Check assumptions for ${numericCols[0]} across ${categoricalCols[0]} groups. Test (1) normality within each group (Shapiro-Wilk), (2) homogeneity of variance (Levene test). Report if assumptions are met. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Check ANOVA Assumptions
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='If ANOVA assumptions violated, perform non-parametric Kruskal-Wallis test for ${numericCols[0]} across ${categoricalCols[0]} groups. Compare with parametric ANOVA results. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Non-Parametric Alternative (Kruskal-Wallis)
+                            </button>
+                        </div>
+                    </details>
                 </div>
             `;
         }
@@ -1071,6 +1103,22 @@ class PyDataAssistant {
                     <div class="tool-info">
                         <small><strong>Analyze:</strong> Pearson, Spearman, Kendall | <strong>Visualize:</strong> Scatter plot with trend line</small>
                     </div>
+                    <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                            <i class="fas fa-lightbulb"></i> 💡 Smart Prompts
+                        </summary>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Create a correlation matrix for all numeric columns (${numericCols.slice(0, 5).join(', ')}${numericCols.length > 5 ? ', ...' : ''}). Show Pearson correlations with p-values. Highlight strong correlations (|r| > 0.7). TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Full Correlation Matrix
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Find pairs of variables with strongest correlations (top 5). Exclude ID columns. For each pair, show Pearson r, p-value, and strength interpretation (weak/moderate/strong). TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Top Correlated Pairs
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Test partial correlation between ${numericCols[0]} and ${numericCols[1]} controlling for ${numericCols[2] || 'other variables'}. Compare with zero-order correlation. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Partial Correlation
+                            </button>
+                        </div>
+                    </details>
                 </div>
             `;
         }
@@ -1099,6 +1147,22 @@ class PyDataAssistant {
                     <div class="tool-info">
                         <small><strong>Analyze:</strong> IQR, Z-score, MAD, Isolation Forest | <strong>Visualize:</strong> Box plot with outliers</small>
                     </div>
+                    <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                            <i class="fas fa-lightbulb"></i> 💡 Smart Prompts
+                        </summary>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Detect outliers in all numeric columns using IQR method. For each column, show count of outliers, percentage, and the actual outlier values. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Multi-Column Outlier Scan
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Use Isolation Forest to detect multivariate outliers considering ${numericCols.slice(0, 3).join(', ')} together. Show anomaly scores and flag unusual combinations. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Multivariate Anomaly Detection
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Compare outlier detection methods for ${numericCols[0]}: IQR (1.5*IQR), Z-score (threshold=3), Modified Z-score (MAD), and Isolation Forest (contamination=0.1). Which method is most appropriate for this data? TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Method Comparison
+                            </button>
+                        </div>
+                    </details>
                 </div>
             `;
         }
@@ -1143,6 +1207,35 @@ class PyDataAssistant {
                             <i class="fas fa-wand-magic"></i> Find Best Pair (Auto-Select)
                         </button>
                     </div>
+                    <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                            <i class="fas fa-lightbulb"></i> 💡 Smart Prompts (Click for Suggestions)
+                        </summary>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                            <p style="font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted);"><strong>📊 Basic Regression:</strong></p>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Build a linear regression model to predict ${target} from ${predictor}. Include R², RMSE, coefficients, p-values, and first 10 predictions. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Simple Regression Analysis
+                            </button>
+                            
+                            <p style="font-size: 0.9em; margin: 0.75rem 0 0.5rem; color: var(--text-muted);"><strong>🎯 Multi-Variable Regression:</strong></p>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Build a linear regression model to predict ${target} from ${meaningfulCols.slice(0, 3).join(', ')}. Use one-hot encoding for categorical variables if needed. Include R², RMSE, feature coefficients, p-values, and residual analysis. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Multiple Predictors (${meaningfulCols.slice(0, 3).join(', ')})
+                            </button>
+                            
+                            <p style="font-size: 0.9em; margin: 0.75rem 0 0.5rem; color: var(--text-muted);"><strong>🔍 Advanced Analysis:</strong></p>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Perform residual analysis for ${target} vs ${predictor} regression. Check for: linearity (residual plot), normality (Q-Q plot statistics), homoscedasticity (scale-location test), and independence (Durbin-Watson statistic). TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Residual Diagnostics
+                            </button>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Compare linear vs polynomial (degree 2 and 3) regression for predicting ${target} from ${predictor}. Show R², RMSE, and AIC for model selection. Which model fits best? TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Model Comparison (Linear vs Polynomial)
+                            </button>
+                            
+                            <p style="font-size: 0.9em; margin: 0.75rem 0 0.5rem; color: var(--text-muted);"><strong>⚠️ Data Quality Checks:</strong></p>
+                            <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value='Before regression: Check ${predictor} and ${target} for: missing values, outliers (Z-score > 3), normality (Shapiro-Wilk test), and multicollinearity (VIF if multiple predictors). Report data quality issues. TEXT FORMAT ONLY'; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                Pre-Regression Data Check
+                            </button>
+                        </div>
+                    </details>
                 </div>
             `;
 
@@ -1427,6 +1520,32 @@ class PyDataAssistant {
                 }
                 .stat-btn-secondary i {
                     margin-right: 0.5rem;
+                }
+                .stat-btn-mini {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    padding: 0.5rem 1rem;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 0.85em;
+                    transition: all 0.2s ease;
+                    display: inline-block;
+                    margin: 0.25rem;
+                }
+                .stat-btn-mini:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+                }
+                details summary {
+                    list-style: none;
+                }
+                details summary::-webkit-details-marker {
+                    display: none;
+                }
+                details[open] summary {
+                    margin-bottom: 0.5rem;
                 }
                 .prompt-hints {
                     background: var(--surface-color);
