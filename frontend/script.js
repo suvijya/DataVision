@@ -359,7 +359,7 @@ class PyDataAssistant {
             // Box plot for outlier detection
             if (categoricalCols.length > 0) {
                 suggestions.push({
-                    icon: 'fas fa-box',
+                    icon: 'fa-chart-bar',
                     label: `${firstNumeric} box plot by ${categoricalCols[0]}`,
                     query: `Create a box plot of ${firstNumeric} grouped by ${categoricalCols[0]} to show distribution and outliers`
                 });
@@ -383,7 +383,7 @@ class PyDataAssistant {
             // Bubble chart if we have 3+ numeric columns
             if (numericCols.length >= 3) {
                 suggestions.push({
-                    icon: 'fas fa-circle',
+                    icon: 'fa-circle-dot',
                     label: `Bubble chart (3D view)`,
                     query: `Create a bubble chart with ${numericCols[0]} on x-axis, ${numericCols[1]} on y-axis, and ${numericCols[2]} as bubble size`
                 });
@@ -424,7 +424,7 @@ class PyDataAssistant {
             
             // Violin plot for distribution comparison
             suggestions.push({
-                icon: 'fas fa-music',
+                icon: 'fa-chart-area',
                 label: `${num} violin plot by ${cat}`,
                 query: `Create a violin plot comparing distribution of ${num} across different ${cat} categories`
             });
@@ -433,13 +433,13 @@ class PyDataAssistant {
         // Hierarchical visualizations
         if (categoricalCols.length >= 2 && numericCols.length > 0) {
             suggestions.push({
-                icon: 'fas fa-sun',
+                icon: 'fa-circle',
                 label: `Hierarchical sunburst`,
                 query: `Create a sunburst chart showing ${numericCols[0]} broken down by ${categoricalCols[0]} and ${categoricalCols[1]}`
             });
             
             suggestions.push({
-                icon: 'fas fa-th-large',
+                icon: 'fa-table-cells',
                 label: `Treemap visualization`,
                 query: `Create a treemap of ${numericCols[0]} by ${categoricalCols[0]} and ${categoricalCols[1]}`
             });
@@ -467,14 +467,14 @@ class PyDataAssistant {
         if (numericCols.length > 0) {
             // Normality tests
             suggestions.push({
-                icon: 'fas fa-chart-bell',
+                icon: 'fa-bell',
                 label: 'Test normality of data',
                 query: `Test if ${numericCols[0]} follows a normal distribution using Shapiro-Wilk, D'Agostino-Pearson, and Anderson-Darling tests`
             });
             
             // Distribution fitting
             suggestions.push({
-                icon: 'fas fa-wave-square',
+                icon: 'fa-wave-square',
                 label: 'Fit distributions',
                 query: `Fit various probability distributions (normal, exponential, gamma, etc.) to ${numericCols[0]} and find the best fit`
             });
@@ -483,13 +483,13 @@ class PyDataAssistant {
         // Hypothesis testing
         if (numericCols.length >= 2) {
             suggestions.push({
-                icon: 'fas fa-balance-scale',
+                icon: 'fa-scale-balanced',
                 label: 'Compare two groups (T-test)',
                 query: `Perform independent t-test to compare ${numericCols[0]} and ${numericCols[1]}, including effect size (Cohen's d)`
             });
             
             suggestions.push({
-                icon: 'fas fa-link',
+                icon: 'fa-link',
                 label: 'Test correlation significance',
                 query: `Test correlation between ${numericCols[0]} and ${numericCols[1]} using Pearson, Spearman, and Kendall methods`
             });
