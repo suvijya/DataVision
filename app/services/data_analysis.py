@@ -433,6 +433,65 @@ if p_value < 0.05:
 else:
     print("❌ No significant difference in sales across platforms (p >= 0.05)")
 
+- Correlation Matrix with P-values (TEXT FORMAT):
+# ✅ CORRECT approach: Create string matrix for display, don't overwrite numeric DataFrame
+numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+n = len(numeric_cols)
+
+print("### Pearson Correlation Matrix with P-values ###\n")
+print("Format: r (p-value) | *marked* if |r| > 0.7\n")
+
+# Calculate all correlations first
+corr_results = {}
+for i in range(n):
+    for j in range(n):
+        col1, col2 = numeric_cols[i], numeric_cols[j]
+        valid_data = df[[col1, col2]].dropna()
+        if len(valid_data) >= 2:
+            r, p = stats.pearsonr(valid_data[col1], valid_data[col2])
+            corr_results[(col1, col2)] = (r, p)
+
+# Print header
+header = "Variable".ljust(15) + " | " + " | ".join([col[:12].ljust(12) for col in numeric_cols])
+print(header)
+print("-" * len(header))
+
+# Print each row with formatted values
+for i, col1 in enumerate(numeric_cols):
+    row_values = []
+    for j, col2 in enumerate(numeric_cols):
+        if (col1, col2) in corr_results:
+            r, p = corr_results[(col1, col2)]
+            # Format the correlation
+            if i == j:  # Diagonal (self-correlation)
+                row_values.append("    1.0000  ".ljust(12))
+            elif abs(r) > 0.7:  # Strong correlation
+                row_values.append(f"*{r:6.3f}*".ljust(12))
+            else:
+                row_values.append(f" {r:6.3f} ".ljust(12))
+        else:
+            row_values.append("     -     ".ljust(12))
+    
+    print(f"{col1[:15].ljust(15)} | {' | '.join(row_values)}")
+
+print("\n*Note: Values marked with * indicate strong correlation (|r| > 0.7)*\n")
+
+# Highlight strong correlations
+print("### Strong Correlations (|r| > 0.7) ###")
+strong_corrs = []
+for (col1, col2), (r, p) in corr_results.items():
+    if abs(r) > 0.7 and col1 != col2:
+        # Avoid duplicates (r12 and r21)
+        if (col2, col1, r, p) not in strong_corrs:
+            strong_corrs.append((col1, col2, r, p))
+
+if strong_corrs:
+    for col1, col2, r, p in sorted(strong_corrs, key=lambda x: abs(x[2]), reverse=True):
+        print(f"• {col1} ↔ {col2}: r={r:.4f}, p={p:.4e}")
+else:
+    print("No strong correlations found.")
+
+
 - Linear Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
 # ⚠️ CRITICAL: Linear regression requires NUMERIC predictor and target variables
 # ❌ DO NOT use categorical variables (Platform, Genre, Publisher, etc.) as predictor
@@ -451,6 +510,19 @@ if df['predictor_col'].dtype == 'object':
 # Use sklearn LinearRegression for simple regression (DO NOT use sm/statsmodels for basic regression)
 # Remove rows with NaN values in predictor or target columns
 valid_data = df[['predictor_col', 'target_col']].dropna()
+
+# ⚠️ CRITICAL: Check if we have enough data after removing NaN
+if len(valid_data) < 10:
+    print(f"❌ ERROR: Insufficient data for regression analysis.")
+    print(f"   After removing NaN values: {len(valid_data)} rows remaining")
+    print(f"   Minimum required: 10 rows")
+    print(f"   Rows removed: {len(df) - len(valid_data)}")
+    print("\n💡 SUGGESTION:")
+    print("  - Check missing value patterns: df[['predictor_col', 'target_col']].isnull().sum()")
+    print("  - Consider imputation instead of removal for missing values")
+    print("  - Use a different variable pair with less missing data")
+    # STOP HERE - do not proceed with regression
+
 X = valid_data[['predictor_col']].values
 y = valid_data['target_col'].values
 n_removed = len(df) - len(valid_data)
@@ -913,7 +985,10 @@ def _execute_code_safely(code: str, df: pd.DataFrame) -> Dict[str, Any]:
             'filter': filter,
             'reversed': reversed,
             'format': format,
-            'repr': repr
+            'repr': repr,
+            # Add these for Python internal operations (needed for f-strings)
+            '__name__': '__main__',
+            '__build_class__': __builtins__['__build_class__'],
             # Explicitly exclude dangerous functions like __import__, exec, eval, etc.
         }
         
@@ -989,10 +1064,64 @@ def _execute_code_safely(code: str, df: pd.DataFrame) -> Dict[str, Any]:
             
             return result
             
-        except Exception as e:
+        except KeyError as e:
+            # Check if it's a security-related KeyError (like __import__)
+            error_str = str(e).strip("'\"")
+            dangerous_names = {
+                '__import__', 'exec', 'eval', 'compile', 'open', 'file', 
+                'input', 'raw_input', 'globals', 'locals', 'vars', 'dir',
+                'getattr', 'setattr', 'delattr', 'hasattr', '__builtins__'
+            }
+            
+            if error_str in dangerous_names:
+                error_msg = f"Security error: Attempted to use restricted function '{error_str}'.\n"
+                error_msg += "This usually happens when using DOUBLE braces in f-strings.\n\n"
+                error_msg += "❌ WRONG: f\"Value: {{variable}}\" (double braces)\n"
+                error_msg += "✅ CORRECT: f\"Value: {variable}\" (single braces)\n\n"
+                error_msg += "Note: All required modules are pre-imported. Do not use import statements."
+            else:
+                # Regular DataFrame column/row not found error
+                error_msg = f"Column/Row not found: {str(e)}. This often happens when:\n"
+                error_msg += "  • Trying to access a column that doesn't exist in the DataFrame\n"
+                error_msg += "  • Accessing filtered DataFrame rows that were removed\n"
+                error_msg += "  • Check if the column/row exists before using .loc[] or .iloc[]\n"
+                error_msg += f"\nOriginal error: {str(e)}"
+            
             return {
                 'success': False,
-                'error': str(e),
+                'error': error_msg,
+                'output': output_buffer.getvalue()
+            }
+        except ValueError as e:
+            # Specific handling for data type/value errors (common in ML)
+            error_msg = f"Value error: {str(e)}. This often happens when:\n"
+            error_msg += "  • Input contains NaN values (use .dropna() to remove them)\n"
+            error_msg += "  • Data types don't match (e.g., text in numeric column)\n"
+            error_msg += "  • Array shapes don't match for ML operations\n"
+            error_msg += f"\nOriginal error: {str(e)}"
+            return {
+                'success': False,
+                'error': error_msg,
+                'output': output_buffer.getvalue()
+            }
+        except IndexError as e:
+            # Specific handling for index out of bounds errors
+            error_msg = f"Index error: {str(e)}. This often happens when:\n"
+            error_msg += "  • Trying to access a row/column index that doesn't exist\n"
+            error_msg += "  • DataFrame is empty or has fewer rows than expected\n"
+            error_msg += "  • Using integer indices beyond DataFrame size\n"
+            error_msg += f"\nOriginal error: {str(e)}"
+            return {
+                'success': False,
+                'error': error_msg,
+                'output': output_buffer.getvalue()
+            }
+        except Exception as e:
+            # Generic error handling for all other exceptions
+            error_type = type(e).__name__
+            return {
+                'success': False,
+                'error': f"{error_type}: {str(e)}",
                 'output': output_buffer.getvalue()
             }
             
