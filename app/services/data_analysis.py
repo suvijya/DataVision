@@ -356,16 +356,18 @@ def _get_data_context(df: pd.DataFrame) -> str:
 def _generate_analysis_prompt(query: str, data_context: str, conversation_context: str) -> str:
     """Generate analysis prompt for LLM."""
     
-    prompt = f"""
+    # Use string concatenation to avoid f-string format specifier issues
+    # when data_context or conversation_context contain curly braces
+    prompt = """
 You are a data analysis assistant. Analyze the provided dataset and answer the user's query.
 
 DATASET CONTEXT:
-{data_context}
+""" + data_context + """
 
 CONVERSATION HISTORY:
-{conversation_context}
+""" + conversation_context + """
 
-USER QUERY: {query}
+USER QUERY: """ + query + """
 
 INSTRUCTIONS:
 1. Write Python code to analyze the data and answer the query
@@ -376,6 +378,9 @@ INSTRUCTIONS:
 6. ⚠️ CRITICAL: DO NOT use __import__, exec, eval, or any dynamic code execution
 7. ⚠️ CRITICAL: DO NOT return model objects (LinearRegression, IsolationForest, etc.) - only return RESULTS (numbers, strings, arrays)
 8. ⚠️ CRITICAL: For statistical analysis - ONLY create visualizations if query EXPLICITLY says "visualize", "create chart", "plot", or "show graph"
+9. ⚠️ CRITICAL F-STRING SYNTAX: Use SINGLE braces in f-strings: f"{variable}" NOT f"{{variable}}"
+   - CORRECT: print(f"R² Score: {r2:.4f}")
+   - WRONG: print(f"R² Score: {{r2:.4f}}")  ❌ This causes __import__ error!
 9. ⚠️ CRITICAL: If query says "TEXT FORMAT ONLY" or "Analyze" - use ONLY print() statements, NO visualizations
 10. ⚠️ DO NOT write: from sklearn import..., import scipy, import statsmodels, etc.
 11. Available modules (PRE-IMPORTED - USE DIRECTLY):
@@ -404,91 +409,123 @@ STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
 - Outliers (IQR): Q1 = df['col'].quantile(0.25); Q3 = df['col'].quantile(0.75); IQR = Q3 - Q1
 - Outliers (Z-score): np.abs(stats.zscore(df['col'])) > 3
 - Outliers (Isolation Forest): IsolationForest(contamination=0.1).fit_predict(df[['col']])
+
+- Categorical Variable Analysis (when user wants to analyze relationship with numeric target):
+# ✅ CORRECT approach: Group-by aggregation
+print("### Sales Analysis by Platform ###")
+grouped = df.groupby('Platform')['NA_Sales'].agg(['mean', 'median', 'std', 'count', 'sum']).round(2)
+grouped = grouped.sort_values('mean', ascending=False)
+print(grouped)
+print(f"\nTop platform: {grouped.index[0]} with average sales of {grouped.iloc[0]['mean']:.2f}")
+
+# ✅ CORRECT: ANOVA test to compare means across categories
+groups = [df[df['Platform'] == platform]['NA_Sales'].dropna() for platform in df['Platform'].unique()]
+f_stat, p_value = stats.f_oneway(*groups)
+print(f"\nANOVA Test: F={f_stat:.4f}, p-value={p_value:.4f}")
+if p_value < 0.05:
+    print("✅ Significant difference in sales across platforms (p < 0.05)")
+else:
+    print("❌ No significant difference in sales across platforms (p >= 0.05)")
+
 - Linear Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
-  # Use sklearn LinearRegression for simple regression (DO NOT use sm/statsmodels for basic regression)
-  # Remove rows with NaN values in predictor or target columns
-  valid_data = df[['predictor_col', 'target_col']].dropna()
-  X = valid_data[['predictor_col']].values
-  y = valid_data['target_col'].values
-  n_removed = len(df) - len(valid_data)
-  model = LinearRegression()
-  model.fit(X, y)
-  predictions = model.predict(X)
-  r2 = r2_score(y, predictions)
-  rmse = np.sqrt(mean_squared_error(y, predictions))
-  
-  # Calculate p-values using scipy.stats (already imported as 'stats')
-  n = len(valid_data)
-  residuals = y - predictions
-  residual_std_error = np.sqrt(np.sum(residuals**2) / (n - 2))
-  x_mean = np.mean(X)
-  x_std = np.sum((X - x_mean)**2)
-  se_coef = residual_std_error / np.sqrt(x_std)
-  t_stat = model.coef_[0] / se_coef
-  p_value = 2 * (1 - stats.t.cdf(abs(t_stat), n - 2))
-  
-  print(f"### Linear Regression Results ###")
-  print(f"Predictor: predictor_col → Target: target_col")
-  if n_removed > 0:
-      print(f"ℹ️ Removed {{n_removed}} rows with missing values ({{n_removed/len(df)*100:.1f}}% of data)")
-  print(f"Sample size: {{len(valid_data)}} rows")
-  print(f"R² Score: {{r2:.4f}}")
-  print(f"RMSE: {{rmse:.4f}}")
-  print(f"Coefficient: {{model.coef_[0]:.4f}} (p-value: {{p_value:.4f}})")
-  print(f"Intercept: {{model.intercept_:.4f}}")
-  print(f"\\n### Interpretation ###")
-  if r2 < 0.1:
-      print(f"⚠️ VERY WEAK: R²={{r2:.4f}} means these variables have almost NO linear relationship.")
+# ⚠️ CRITICAL: Linear regression requires NUMERIC predictor and target variables
+# ❌ DO NOT use categorical variables (Platform, Genre, Publisher, etc.) as predictor
+# ❌ DO NOT one-hot encode categorical variables for regression
+# ✅ If user requests regression with categorical variable, suggest GROUP-BY analysis or ANOVA instead
+
+# Example validation before regression:
+if df['predictor_col'].dtype == 'object':
+    print("❌ ERROR: 'predictor_col' is categorical. Linear regression requires numeric variables.")
+    print("💡 SUGGESTION: Instead, try:")
+    print("  - Group-by analysis: df.groupby('predictor_col')['target_col'].agg(['mean', 'median', 'count'])")
+    print("  - ANOVA test: Compare means across categories using stats.f_oneway()")
+    print("  - Visualization: Box plot or bar chart showing target_col by predictor_col categories")
+    # STOP HERE - do not proceed with regression
+
+# Use sklearn LinearRegression for simple regression (DO NOT use sm/statsmodels for basic regression)
+# Remove rows with NaN values in predictor or target columns
+valid_data = df[['predictor_col', 'target_col']].dropna()
+X = valid_data[['predictor_col']].values
+y = valid_data['target_col'].values
+n_removed = len(df) - len(valid_data)
+model = LinearRegression()
+model.fit(X, y)
+predictions = model.predict(X)
+r2 = r2_score(y, predictions)
+rmse = np.sqrt(mean_squared_error(y, predictions))
+
+# Calculate p-values using scipy.stats (already imported as 'stats')
+n = len(valid_data)
+residuals = y - predictions
+residual_std_error = np.sqrt(np.sum(residuals**2) / (n - 2))
+x_mean = np.mean(X)
+x_std = np.sum((X - x_mean)**2)
+se_coef = residual_std_error / np.sqrt(x_std)
+t_stat = model.coef_[0] / se_coef
+p_value = 2 * (1 - stats.t.cdf(abs(t_stat), n - 2))
+
+print(f"### Linear Regression Results ###")
+print(f"Predictor: predictor_col → Target: target_col")
+if n_removed > 0:
+      print(f"ℹ️ Removed {n_removed} rows with missing values ({n_removed/len(df)*100:.1f}% of data)")
+print(f"Sample size: {len(valid_data)} rows")
+print(f"R² Score: {r2:.4f}")
+print(f"RMSE: {rmse:.4f}")
+print(f"Coefficient: {model.coef_[0]:.4f} (p-value: {p_value:.4f})")
+print(f"Intercept: {model.intercept_:.4f}")
+print(f"\n### Interpretation ###")
+if r2 < 0.1:
+      print(f"⚠️ VERY WEAK: R²={r2:.4f} means these variables have almost NO linear relationship.")
       print(f"💡 Suggestion: Try different variable pairs. Exclude ID columns, postal codes, or indices.")
-  elif r2 < 0.3:
-      print(f"⚠️ WEAK: R²={{r2:.4f}} means only {{r2*100:.1f}}% of variance is explained.")
+elif r2 < 0.3:
+      print(f"⚠️ WEAK: R²={r2:.4f} means only {r2*100:.1f}% of variance is explained.")
       print(f"💡 Suggestion: This model has limited predictive power. Try different variables.")
-  elif r2 < 0.7:
-      print(f"✓ MODERATE: R²={{r2:.4f}} means {{r2*100:.1f}}% of variance is explained.")
-  else:
-      print(f"✅ STRONG: R²={{r2:.4f}} means {{r2*100:.1f}}% of variance is explained.")
-  print(f"\\nEquation: target_col = {{model.coef_[0]:.4f}} * predictor_col + {{model.intercept_:.4f}}")
-  print(f"\\nFirst 10 predictions:")
-  for i in range(min(10, len(predictions))):
-      print(f"  Actual: {{y[i]:.2f}}, Predicted: {{predictions[i]:.2f}}, Residual: {{y[i]-predictions[i]:.2f}}")
-  # DO NOT ADD fig.show() or any visualization!
+elif r2 < 0.7:
+      print(f"✓ MODERATE: R²={r2:.4f} means {r2*100:.1f}% of variance is explained.")
+else:
+      print(f"✅ STRONG: R²={r2:.4f} means {r2*100:.1f}% of variance is explained.")
+print(f"\nEquation: target_col = {model.coef_[0]:.4f} * predictor_col + {model.intercept_:.4f}")
+print(f"\nFirst 10 predictions:")
+for i in range(min(10, len(predictions))):
+      print(f"  Actual: {y[i]:.2f}, Predicted: {predictions[i]:.2f}, Residual: {y[i]-predictions[i]:.2f}")
+# DO NOT ADD fig.show() or any visualization!
 
 - Polynomial Regression (TEXT OUTPUT ONLY - DO NOT VISUALIZE):
-  # Remove rows with NaN values
-  valid_data = df[['predictor_col', 'target_col']].dropna()
-  X = valid_data[['predictor_col']].values
-  y = valid_data['target_col'].values
-  poly = PolynomialFeatures(degree=2)
-  X_poly = poly.fit_transform(X)
-  model = LinearRegression()
-  model.fit(X_poly, y)
-  predictions = model.predict(X_poly)
-  r2 = r2_score(y, predictions)
-  rmse = np.sqrt(mean_squared_error(y, predictions))
-  print(f"### Polynomial Regression Results (Degree 2) ###")
-  print(f"R² Score: {{r2:.4f}}")
-  print(f"RMSE: {{rmse:.4f}}")
-  # DO NOT ADD fig.show() or any visualization!
+# Remove rows with NaN values
+valid_data = df[['predictor_col', 'target_col']].dropna()
+X = valid_data[['predictor_col']].values
+y = valid_data['target_col'].values
+poly = PolynomialFeatures(degree=2)
+X_poly = poly.fit_transform(X)
+model = LinearRegression()
+model.fit(X_poly, y)
+predictions = model.predict(X_poly)
+r2 = r2_score(y, predictions)
+rmse = np.sqrt(mean_squared_error(y, predictions))
+print(f"### Polynomial Regression Results (Degree 2) ###")
+print(f"R² Score: {r2:.4f}")
+print(f"RMSE: {rmse:.4f}")
+# DO NOT ADD fig.show() or any visualization!
 
 - Find Best Variable Pair for Regression (TEXT OUTPUT ONLY - NO VISUALIZATION):
-  # Step 1: Get all numeric columns, excluding ID-like columns (define keywords inline every time)
-  numeric_cols = [col for col in df.select_dtypes(include=[np.number]).columns 
+# Step 1: Get all numeric columns, excluding ID-like columns (define keywords inline every time)
+numeric_cols = [col for col in df.select_dtypes(include=[np.number]).columns 
                   if not any(kw in col.lower() for kw in ['id', 'postal', 'code', 'index', 'row'])]
-  
-  # Step 2: Calculate all pairwise correlations (combinations is pre-imported, use it directly)
-  pairs = []
-  for col1, col2 in combinations(numeric_cols, 2):
+
+# Step 2: Calculate all pairwise correlations (combinations is pre-imported, use it directly)
+pairs = []
+for col1, col2 in combinations(numeric_cols, 2):
       corr = df[[col1, col2]].corr().iloc[0, 1]
       pairs.append((abs(corr), corr, col1, col2))
-  pairs.sort(reverse=True)
-  
-  # Step 3: Print results in TEXT FORMAT
-  print("### Top 3 Variable Pairs for Linear Regression ###")
-  print("")
-  for i, (abs_corr, corr, c1, c2) in enumerate(pairs[:3], 1):
-      print(f"{{i}}. {{c1}} → {{c2}}")
-      print(f"   Correlation: {{corr:.4f}}")
-      print(f"   Estimated R²: {{corr**2:.4f}}")
+pairs.sort(reverse=True)
+
+# Step 3: Print results in TEXT FORMAT
+print("### Top 3 Variable Pairs for Linear Regression ###")
+print("")
+for i, (abs_corr, corr, c1, c2) in enumerate(pairs[:3], 1):
+      print(f"{i}. {c1} → {c2}")
+      print(f"   Correlation: {corr:.4f}")
+      print(f"   Estimated R²: {corr**2:.4f}")
       print("")
 
 - Distribution Fitting: stats.norm.fit(df['col']); stats.kstest(df['col'], 'norm', params)
@@ -496,36 +533,36 @@ STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
 VISUALIZATION EXAMPLES (ONLY when query explicitly requests visualization):
 
 - Linear Regression Visualization (ONLY if query says "visualize" or "create chart"):
-  # Remove rows with NaN values
-  valid_data = df[['predictor_col', 'target_col']].dropna()
-  X = valid_data[['predictor_col']].values
-  y = valid_data['target_col'].values
-  model = LinearRegression()
-  model.fit(X, y)
-  predictions = model.predict(X)
-  r2 = r2_score(y, predictions)
-  # Create simple DataFrame for Plotly
-  viz_df = pd.DataFrame({{'x': valid_data['predictor_col'], 'Actual': y, 'Predicted': predictions}})
-  fig = px.scatter(viz_df, x='x', y='Actual', title=f'Linear Regression (R²={{r2:.3f}})')
-  fig.add_scatter(x=viz_df['x'], y=viz_df['Predicted'], mode='lines', name='Fit')
-  if r2 < 0.3:
-      fig.add_annotation(text=f"⚠️ Weak Correlation (R²={{r2:.3f}})", 
+# Remove rows with NaN values
+valid_data = df[['predictor_col', 'target_col']].dropna()
+X = valid_data[['predictor_col']].values
+y = valid_data['target_col'].values
+model = LinearRegression()
+model.fit(X, y)
+predictions = model.predict(X)
+r2 = r2_score(y, predictions)
+# Create simple DataFrame for Plotly
+viz_df = pd.DataFrame({'x': valid_data['predictor_col'], 'Actual': y, 'Predicted': predictions})
+fig = px.scatter(viz_df, x='x', y='Actual', title=f'Linear Regression (R²={r2:.3f})')
+fig.add_scatter(x=viz_df['x'], y=viz_df['Predicted'], mode='lines', name='Fit')
+if r2 < 0.3:
+      fig.add_annotation(text=f"⚠️ Weak Correlation (R²={r2:.3f})", 
                          xref="paper", yref="paper", x=0.5, y=0.95, showarrow=False,
                          font=dict(color="red", size=14))
-  fig.show()
+fig.show()
 
 - Box Plot for Outliers (ONLY if query says "visualize"):
-  fig = px.box(df, y='column', title='Outlier Detection')
-  fig.show()
+fig = px.box(df, y='column', title='Outlier Detection')
+fig.show()
 
 - Histogram with Normal Curve (ONLY if query says "visualize"):
-  fig = px.histogram(df, x='column', nbins=30, title='Normality Test')
-  fig.show()
+fig = px.histogram(df, x='column', nbins=30, title='Normality Test')
+fig.show()
 
 - Correlation Scatter Plot (ONLY if query says "visualize"):
-  corr = df[['col1', 'col2']].corr().iloc[0,1]
-  fig = px.scatter(df, x='col1', y='col2', title=f'Correlation={{corr:.3f}}', trendline='ols')
-  fig.show()
+corr = df[['col1', 'col2']].corr().iloc[0,1]
+fig = px.scatter(df, x='col1', y='col2', title=f'Correlation={corr:.3f}', trendline='ols')
+fig.show()
 
 FORMATTING GUIDELINES:
 - Use "###" for main section headers
@@ -579,6 +616,37 @@ VISUALIZATION GUIDELINES - 25+ Chart Types Available:
 - Waterfall (use go): fig = go.Figure(go.Waterfall(x=df['categories'], y=df['values']))
 - Indicator: fig = go.Figure(go.Indicator(mode='gauge+number', value=value, title='KPI'))
 
+**Geographic Maps (State/Country Level):**
+- Choropleth Map (US States): px.choropleth(df, locations='State', locationmode='USA-states', color='Profit', scope='usa', title='Profit by State', labels={'Profit':'Total Profit'})
+* locationmode='USA-states' requires full state names (e.g., 'California', 'Texas') or 2-letter codes (e.g., 'CA', 'TX')
+* scope='usa' for US map, 'europe' for Europe, 'world' for world map
+- Choropleth Map (Countries): px.choropleth(df, locations='Country', locationmode='country names', color='Sales', title='Sales by Country')
+* Use locationmode='ISO-3' for 3-letter codes (USA, GBR, etc.) or 'country names' for full names
+- Scatter Geo (Points on Map): px.scatter_geo(df, locations='State', locationmode='USA-states', size='Sales', color='Profit', hover_name='City', scope='usa', title='Sales Distribution')
+* Shows individual points (cities/states) on a map with size and color encoding
+- Scatter Geo with Lat/Lon: px.scatter_geo(df, lat='Latitude', lon='Longitude', size='Population', color='Category', hover_name='City', title='Geographic Distribution')
+* Use when you have exact coordinates (latitude/longitude columns)
+- Density Mapbox: px.density_mapbox(df, lat='Latitude', lon='Longitude', z='Density', radius=10, mapbox_style='open-street-map', title='Density Heatmap')
+* Creates a heatmap overlay on an interactive map
+
+**Map Usage Examples:**
+# Example 1: US State-level profit visualization
+state_profit = df.groupby('State')['Profit'].sum().reset_index()
+fig = px.choropleth(state_profit, locations='State', locationmode='USA-states', 
+                      color='Profit', scope='usa', title='Total Profit by State',
+                      color_continuous_scale='Viridis', labels={'Profit':'Total Profit ($)'})
+
+# Example 2: Country-level sales with hover information
+country_sales = df.groupby('Country').agg({'Sales':'sum', 'Units':'sum'}).reset_index()
+fig = px.choropleth(country_sales, locations='Country', locationmode='country names',
+                      color='Sales', hover_data=['Units'], title='Global Sales Distribution',
+                      color_continuous_scale='Blues')
+
+# Example 3: Bubble map showing city-level data
+fig = px.scatter_geo(df, locations='State', locationmode='USA-states', 
+                       size='Sales', color='Profit', hover_name='City',
+                       scope='usa', title='Sales & Profit by Location')
+
 **IMPORTANT RULES:**
 - DO NOT manually set hovertemplate or customdata
 - Let Plotly handle hover data automatically using hover_data parameter
@@ -593,7 +661,7 @@ Provide your analysis and then include the Python code in markdown code blocks l
 # NO IMPORTS - Just use print() and pandas methods
 print("### Dataset Overview ###")
 print("")
-print(f"Shape: {{df.shape[0]:,}} rows × {{df.shape[1]}} columns")
+print(f"Shape: {df.shape[0]:,} rows × {df.shape[1]} columns")
 print("")
 print("Columns:", ', '.join(df.columns))
 print("")
@@ -642,8 +710,8 @@ You now have access to advanced statistical tests via scipy.stats module (import
 from scipy import stats
 # Shapiro-Wilk test
 stat, p = stats.shapiro(df['column'].dropna())
-print(f"Shapiro-Wilk: statistic={{stat:.4f}}, p-value={{p:.4f}}")
-print(f"Data is {{'normal' if p > 0.05 else 'NOT normal'}} (α=0.05)")
+print(f"Shapiro-Wilk: statistic={stat:.4f}, p-value={p:.4f}")
+print(f"Data is {'normal' if p > 0.05 else 'NOT normal'} (α=0.05)")
 ```
 
 **T-Tests:**
@@ -653,7 +721,7 @@ from scipy import stats
 group1 = df[df['group']=='A']['value'].dropna()
 group2 = df[df['group']=='B']['value'].dropna()
 stat, p = stats.ttest_ind(group1, group2)
-print(f"T-test: t={{stat:.4f}}, p={{p:.4f}}, significant={{p < 0.05}}")
+print(f"T-test: t={stat:.4f}, p={p:.4f}, significant={p < 0.05}")
 ```
 
 **Correlation Tests:**
@@ -661,7 +729,7 @@ print(f"T-test: t={{stat:.4f}}, p={{p:.4f}}, significant={{p < 0.05}}")
 from scipy import stats
 # Pearson correlation
 corr, p = stats.pearsonr(df['x'].dropna(), df['y'].dropna())
-print(f"Pearson r={{corr:.4f}}, p={{p:.4f}}, significant={{p < 0.05}}")
+print(f"Pearson r={corr:.4f}, p={p:.4f}, significant={p < 0.05}")
 ```
 
 **Chi-Square Test:**
@@ -669,7 +737,7 @@ print(f"Pearson r={{corr:.4f}}, p={{p:.4f}}, significant={{p < 0.05}}")
 from scipy import stats
 contingency = pd.crosstab(df['cat1'], df['cat2'])
 chi2, p, dof, expected = stats.chi2_contingency(contingency)
-print(f"Chi-square={{chi2:.4f}}, p={{p:.4f}}, df={{dof}}")
+print(f"Chi-square={chi2:.4f}, p={p:.4f}, df={dof}")
 ```
 
 **ANOVA:**
@@ -677,7 +745,7 @@ print(f"Chi-square={{chi2:.4f}}, p={{p:.4f}}, df={{dof}}")
 from scipy import stats
 groups = [group['value'].dropna() for name, group in df.groupby('category')]
 f_stat, p = stats.f_oneway(*groups)
-print(f"ANOVA: F={{f_stat:.4f}}, p={{p:.4f}}")
+print(f"ANOVA: F={f_stat:.4f}, p={p:.4f}")
 ```
 
 **Outlier Detection:**
@@ -685,13 +753,13 @@ print(f"ANOVA: F={{f_stat:.4f}}, p={{p:.4f}}")
 # Z-score method
 z_scores = np.abs(stats.zscore(df['column'].dropna()))
 outliers = df['column'][z_scores > 3]
-print(f"Found {{len(outliers)}} outliers using Z-score method")
+print(f"Found {len(outliers)} outliers using Z-score method")
 
 # IQR method
 Q1, Q3 = df['column'].quantile([0.25, 0.75])
 IQR = Q3 - Q1
 outliers_iqr = df['column'][(df['column'] < Q1 - 1.5*IQR) | (df['column'] > Q3 + 1.5*IQR)]
-print(f"Found {{len(outliers_iqr)}} outliers using IQR method")
+print(f"Found {len(outliers_iqr)} outliers using IQR method")
 ```
 
 **Regression Analysis:**
@@ -706,9 +774,9 @@ model = LinearRegression()
 model.fit(X, y)
 r2 = r2_score(y, model.predict(X))
 
-print(f"Linear Regression R²={{r2:.4f}}")
-print(f"Coefficients: {{model.coef_}}")
-print(f"Intercept: {{model.intercept_:.4f}}")
+print(f"Linear Regression R²={r2:.4f}")
+print(f"Coefficients: {model.coef_}")
+print(f"Intercept: {model.intercept_:.4f}")
 ```
 
 IMPORTANT: For statistical queries, always import the necessary modules at the top:

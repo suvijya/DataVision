@@ -1313,6 +1313,111 @@ class PyDataAssistant {
 
         html += '</div></div>'; // Close summary stats
 
+        // Geographic Visualization
+        const geoColumns = columns.filter(col => {
+            const colLower = col.toLowerCase();
+            return colLower.includes('state') || colLower.includes('country') || 
+                   colLower.includes('region') || colLower.includes('city') || 
+                   colLower.includes('location') || colLower.includes('province');
+        });
+        
+        if (geoColumns.length > 0 && numericCols.length > 0) {
+            html += '<div class="stats-category">';
+            html += '<h4><i class="fas fa-map-marked-alt"></i> Geographic Visualization</h4>';
+            html += '<div class="stats-grid">';
+            
+            const geoCol = geoColumns[0]; // Primary geographic column
+            const valueCol = numericCols[0]; // Primary numeric column for coloring
+            
+            // Detect if it's US states, countries, or other
+            const isUSStates = geoCol.toLowerCase().includes('state') || geoCol.toLowerCase() === 'st';
+            const isCountry = geoCol.toLowerCase().includes('country');
+            
+            if (isUSStates) {
+                html += `
+                    <div class="stat-tool-card">
+                        <div class="tool-icon"><i class="fas fa-map-marked-alt"></i></div>
+                        <h5>US State Choropleth Map</h5>
+                        <p>Color-coded map of US states by values</p>
+                        <div class="tool-actions">
+                            <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery(\`Create a choropleth map showing ${valueCol} by ${geoCol} for USA states. Use a color scale and include hover information with state names and values\`)">
+                                Map ${valueCol} by ${geoCol}
+                            </button>
+                        </div>
+                        <div class="tool-info">
+                            <small><strong>Shows:</strong> Geographic distribution across US states with color intensity</small>
+                        </div>
+                        <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                            <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                                <i class="fas fa-lightbulb"></i> 💡 Smart Prompts
+                            </summary>
+                            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                                <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value=\`Create a choropleth map of the USA showing total ${valueCol} by ${geoCol}. Group data by state, sum the values, and use a color scale from light to dark. Include hover tooltips with state name and total value.\`; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                    Total ${valueCol} by State
+                                </button>
+                                ${numericCols.length >= 2 ? `
+                                <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value=\`Create a scatter geo map of USA showing ${geoCol} as locations. Use ${numericCols[0]} for bubble size and ${numericCols[1]} for color. Include hover information with both metrics.\`; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                    Bubble Map (Size + Color)
+                                </button>
+                                ` : ''}
+                                <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value=\`Show top 10 states by ${valueCol} on a choropleth map. Filter the data to include only the highest performing states, then create a US map visualization with distinct colors for each state.\`; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                    Top 10 States Only
+                                </button>
+                            </div>
+                        </details>
+                    </div>
+                `;
+            } else if (isCountry) {
+                html += `
+                    <div class="stat-tool-card">
+                        <div class="tool-icon"><i class="fas fa-globe-americas"></i></div>
+                        <h5>World Choropleth Map</h5>
+                        <p>Color-coded map of countries by values</p>
+                        <div class="tool-actions">
+                            <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery(\`Create a world choropleth map showing ${valueCol} by ${geoCol}. Use country names for locations and a color scale to represent values\`)">
+                                Map ${valueCol} by ${geoCol}
+                            </button>
+                        </div>
+                        <div class="tool-info">
+                            <small><strong>Shows:</strong> Global geographic distribution with color intensity</small>
+                        </div>
+                        <details style="margin-top: 1rem; padding: 0.75rem; background: var(--code-bg); border-radius: 8px; border-left: 3px solid #667eea;">
+                            <summary style="cursor: pointer; font-weight: 600; color: var(--primary-color); user-select: none;">
+                                <i class="fas fa-lightbulb"></i> 💡 Smart Prompts
+                            </summary>
+                            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                                <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value=\`Create a world choropleth map showing total ${valueCol} by ${geoCol}. Aggregate data by country, use a blue color scale, and include hover information with country name and value.\`; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                    Total ${valueCol} by Country
+                                </button>
+                                <button class="stat-btn-mini" onclick="document.getElementById('customStatsPrompt').value=\`Create a world map showing ${valueCol} by ${geoCol}. Focus on a specific region (Europe, Asia, or Americas) by setting the appropriate map scope.\`; window.pyDataAssistant.runCustomStatisticalPrompt();" style="margin: 0.25rem; font-size: 0.85em;">
+                                    Regional Focus Map
+                                </button>
+                            </div>
+                        </details>
+                    </div>
+                `;
+            } else {
+                // Generic geographic visualization
+                html += `
+                    <div class="stat-tool-card">
+                        <div class="tool-icon"><i class="fas fa-map-pin"></i></div>
+                        <h5>Geographic Distribution</h5>
+                        <p>Visualize data across locations</p>
+                        <div class="tool-actions">
+                            <button class="stat-btn" onclick="window.pyDataAssistant.executeStatisticalQuery(\`Create a geographic visualization showing ${valueCol} by ${geoCol}. If the data contains US states, create a choropleth map. If it contains countries, create a world map.\`)">
+                                Map ${valueCol} by ${geoCol}
+                            </button>
+                        </div>
+                        <div class="tool-info">
+                            <small><strong>Auto-detects:</strong> US states, countries, or regions and creates appropriate map</small>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div></div>'; // Close geographic visualization
+        }
+
         // Custom Query Section
         html += '<div class="stats-category">';
         html += '<h4><i class="fas fa-keyboard"></i> Custom Analysis</h4>';
@@ -1618,6 +1723,15 @@ class PyDataAssistant {
                 ]
             },
             {
+                category: 'Geographic Maps',
+                charts: [
+                    { name: 'Choropleth Map (USA)', icon: 'fa-map-marked-alt', description: 'Color-coded US states by values', example: 'Create a choropleth map showing total profit by State using USA states' },
+                    { name: 'Choropleth Map (World)', icon: 'fa-globe-americas', description: 'Color-coded countries by values', example: 'Create a world choropleth map showing sales by Country' },
+                    { name: 'Scatter Geo Map', icon: 'fa-map-pin', description: 'Points on map with size and color', example: 'Create a scatter geo map showing sales by State with bubble sizes' },
+                    { name: 'Bubble Map', icon: 'fa-circle', description: 'Geographic bubbles sized by values', example: 'Show profit by State on a map with bubble sizes representing sales' }
+                ]
+            },
+            {
                 category: 'Statistical & Analysis',
                 charts: [
                     { name: 'Density Plot', icon: 'fa-wave-square', description: 'Smooth distribution estimate', example: 'Density plot of test scores' },
@@ -1881,7 +1995,7 @@ class PyDataAssistant {
             <div class="message-content">
                 <div class="plot-container">
                     <h4>${title}</h4>
-                    <div id="${plotId}" class="plot-area"></div>
+                    <div id="${plotId}" class="plot-area" style="width: 100%; min-height: 600px;"></div>
                     ${formattedMessage ? `<div class="analysis-insights">${formattedMessage}</div>` : ''}
                 </div>
             </div>
@@ -1900,10 +2014,59 @@ class PyDataAssistant {
             const chartLayout = plotData.data.layout || {};
             const chartConfig = plotData.data.config || {responsive: true, displayModeBar: true};
             
+            // CRITICAL FIX: Ensure layout has proper dimensions for geographic maps
+            if (!chartLayout.height) {
+                chartLayout.height = 600; // Set default height for maps
+                console.log('Setting default layout height: 600px');
+            }
+            if (!chartLayout.autosize) {
+                chartLayout.autosize = true;
+                console.log('Setting layout autosize: true');
+            }
+            
+            // CRITICAL FIX: Ensure geo maps have visible configuration
+            if (chartLayout.geo) {
+                console.log('Geo configuration detected:', chartLayout.geo);
+                // Ensure geo has required properties for visibility
+                if (!chartLayout.geo.bgcolor) {
+                    chartLayout.geo.bgcolor = 'rgb(229, 229, 229)'; // Light gray background
+                }
+                if (!chartLayout.geo.showland) {
+                    chartLayout.geo.showland = true;
+                    chartLayout.geo.landcolor = 'rgb(243, 243, 243)';
+                }
+                if (!chartLayout.geo.showcountries) {
+                    chartLayout.geo.showcountries = true;
+                    chartLayout.geo.countrycolor = 'rgb(204, 204, 204)';
+                }
+                if (chartLayout.geo.scope === 'usa' && !chartLayout.geo.showlakes) {
+                    chartLayout.geo.showlakes = true;
+                    chartLayout.geo.lakecolor = 'rgb(255, 255, 255)';
+                }
+                console.log('Updated geo configuration:', chartLayout.geo);
+            }
+            
             // CRITICAL FIX: Decode binary encoded data
             // Plotly's to_json() sometimes encodes numpy arrays as binary data
             if (chartData && chartData.length > 0) {
                 chartData.forEach(trace => {
+                    // CRITICAL: Ensure trace type is set (required for geographic maps)
+                    if (!trace.type) {
+                        // Infer type from trace properties
+                        if (trace.geo && trace.locationmode) {
+                            if (trace.z !== undefined) {
+                                trace.type = 'choropleth';
+                                console.log('Setting trace type to choropleth');
+                            } else if (trace.lat && trace.lon) {
+                                trace.type = 'scattergeo';
+                                console.log('Setting trace type to scattergeo');
+                            } else if (trace.locations) {
+                                trace.type = 'scattergeo';
+                                console.log('Setting trace type to scattergeo (locations-based)');
+                            }
+                        }
+                    }
+                    
                     // Fix binary encoded values (common issue with numpy arrays)
                     if (trace.values && typeof trace.values === 'object' && trace.values.bdata) {
                         console.log('Decoding binary values data');
@@ -1944,7 +2107,33 @@ class PyDataAssistant {
             
             console.log('Rendering chart with:', {chartData, chartLayout, chartConfig});
             
-            Plotly.newPlot(plotId, chartData, chartLayout, chartConfig);
+            // Check if element exists
+            const plotElement = document.getElementById(plotId);
+            console.log('Plot element:', plotElement, 'exists:', !!plotElement);
+            
+            if (plotElement) {
+                Plotly.newPlot(plotId, chartData, chartLayout, chartConfig)
+                    .then(() => {
+                        console.log('✅ Plotly chart rendered successfully');
+                        // Debug: Check element dimensions
+                        const rect = plotElement.getBoundingClientRect();
+                        console.log('Chart dimensions:', {
+                            width: rect.width,
+                            height: rect.height,
+                            top: rect.top,
+                            left: rect.left,
+                            visible: rect.width > 0 && rect.height > 0
+                        });
+                        console.log('Chart innerHTML length:', plotElement.innerHTML.length);
+                        console.log('Chart has svg:', plotElement.querySelector('svg') !== null);
+                    })
+                    .catch((error) => {
+                        console.error('❌ Plotly rendering error:', error);
+                        plotElement.innerHTML = `<p style="color: red; padding: 20px;">Error rendering chart: ${error.message}</p>`;
+                    });
+            } else {
+                console.error('❌ Plot element not found:', plotId);
+            }
         } else {
             console.error('Plotly not available or no data:', {plotData, hasPlotly: typeof Plotly !== 'undefined'});
             document.getElementById(plotId).innerHTML = '<p>⚠️ Chart data received but Plotly.js not loaded. Please refresh the page.</p>';
