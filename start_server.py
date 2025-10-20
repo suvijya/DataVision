@@ -50,7 +50,8 @@ def main():
             host="0.0.0.0",
             port=8000,
             log_level="info",
-            reload=False  # Disable reload to avoid issues
+            reload=False,  # Disable reload to avoid issues
+            timeout_keep_alive=120  # 120 second timeout for long-running requests
         )
     except KeyboardInterrupt:
         print("\n\n✅ Server stopped by user")

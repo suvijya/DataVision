@@ -1845,6 +1845,10 @@ class PyDataAssistant {
         this.showLoading('Analyzing your query...');
 
         try {
+            // Create AbortController for timeout handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
             const response = await fetch(`${this.apiBaseUrl}/session/query`, {
                 method: 'POST',
                 headers: {
@@ -1853,8 +1857,11 @@ class PyDataAssistant {
                 body: JSON.stringify({
                     session_id: this.currentSessionId,
                     query: query
-                })
+                }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -1874,7 +1881,25 @@ class PyDataAssistant {
 
         } catch (error) {
             this.hideLoading();
-            this.addMessage('assistant', `❌ Sorry, I encountered an error: ${error.message}`);
+            
+            // Handle different types of errors
+            let errorMessage;
+            if (error.name === 'AbortError') {
+                errorMessage = '⏱️ The analysis is taking longer than expected. This might be a complex query. Try:\n\n' +
+                             '• Breaking down the query into simpler parts\n' +
+                             '• Reducing the dataset size by filtering first\n' +
+                             '• Using simpler statistical methods\n' +
+                             '• Checking if the columns exist in your dataset';
+            } else if (error.message.includes('504') || error.message.includes('timeout')) {
+                errorMessage = '⏱️ The server timed out processing your request. Try:\n\n' +
+                             '• Simplifying your query\n' +
+                             '• Using fewer variables or statistical tests\n' +
+                             '• Splitting complex analysis into smaller steps';
+            } else {
+                errorMessage = `❌ Sorry, I encountered an error: ${error.message}`;
+            }
+            
+            this.addMessage('assistant', errorMessage);
             console.error('Query error:', error);
         }
     }
