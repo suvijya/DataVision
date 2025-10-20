@@ -8,6 +8,8 @@ class PyDataAssistant {
         this.currentSessionId = null;
         this.currentDataPreview = null;
         this.apiBaseUrl = '/api/v1';
+        this.tabContentCache = {}; // Cache rendered tab content
+        this.currentTab = null;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -63,12 +65,17 @@ class PyDataAssistant {
             });
         }
 
-        // Preview tabs
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('tab-btn')) {
-                this.switchTab(e.target.dataset.tab);
-            }
-        });
+        // Preview tabs - Use event delegation for better performance
+        const previewSidebar = document.querySelector('.preview-sidebar');
+        if (previewSidebar) {
+            previewSidebar.addEventListener('click', (e) => {
+                const tabBtn = e.target.closest('.tab-btn');
+                if (tabBtn) {
+                    e.preventDefault();
+                    this.switchTab(tabBtn.dataset.tab);
+                }
+            });
+        }
 
         // Chat events
         if (this.queryInput) {
@@ -221,6 +228,8 @@ class PyDataAssistant {
             
             this.currentSessionId = result.session_id;
             this.currentDataPreview = result.data_preview;
+            this.tabContentCache = {}; // Clear cache for new dataset
+            this.currentTab = null; // Reset current tab
             
             this.hideLoading();
             this.showDataPreview();
@@ -658,53 +667,70 @@ class PyDataAssistant {
     }
 
     switchTab(tabName) {
-        // Update active tab
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
+        // Prevent re-rendering same tab
+        if (this.currentTab === tabName) return;
+        
+        // Update active tab instantly
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        tabButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
         });
         
-        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
-        if (activeTab) activeTab.classList.add('active');
+        this.currentTab = tabName;
 
         // Load tab content
         if (!this.currentDataPreview || !this.tabContent) return;
         
-        let content = '';
-        const preview = this.currentDataPreview;
-
-        switch (tabName) {
-            case 'sample':
-                content = this.renderSampleData(preview.sample_data, preview.columns);
-                break;
-            case 'fulldata':
-                this.renderFullDataTab();
-                return; // Handle separately with async loading
-            case 'overview':
-                content = this.renderOverview(preview);
-                break;
-            case 'stats':
-                content = this.renderStatistics(preview);
-                break;
-            case 'quality':
-                content = this.renderDataQuality(preview);
-                break;
-            case 'columns':
-                content = this.renderColumnsInfo(preview);
-                break;
-            case 'insights':
-                content = this.renderInsights(preview);
-                break;
-            case 'statistical':
-                content = this.renderStatisticalAnalysisTab(preview);
-                break;
-            case 'chartgallery':
-                content = this.renderChartGallery();
-                break;
-            default:
-                content = '<p>Tab content not implemented yet.</p>';
+        // Check cache first for instant switching
+        if (this.tabContentCache[tabName]) {
+            this.tabContent.innerHTML = this.tabContentCache[tabName];
+            return;
         }
+        
+        // Show loading for new content
+        this.tabContent.innerHTML = '<div class="loading-tab"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        
+        // Defer rendering to next frame for smooth tab highlight
+        requestAnimationFrame(() => {
+            let content = '';
+            const preview = this.currentDataPreview;
 
-        this.tabContent.innerHTML = content;
+            switch (tabName) {
+                case 'sample':
+                    content = this.renderSampleData(preview.sample_data, preview.columns);
+                    break;
+                case 'fulldata':
+                    this.renderFullDataTab();
+                    return; // Handle separately with async loading
+                case 'overview':
+                    content = this.renderOverview(preview);
+                    break;
+                case 'stats':
+                    content = this.renderStatistics(preview);
+                    break;
+                case 'quality':
+                    content = this.renderDataQuality(preview);
+                    break;
+                case 'columns':
+                    content = this.renderColumnsInfo(preview);
+                    break;
+                case 'insights':
+                    content = this.renderInsights(preview);
+                    break;
+                case 'statistical':
+                    content = this.renderStatisticalAnalysisTab(preview);
+                    break;
+                case 'chartgallery':
+                    content = this.renderChartGallery();
+                    break;
+                default:
+                    content = '<p>Tab content not implemented yet.</p>';
+            }
+
+            // Cache and display
+            this.tabContentCache[tabName] = content;
+            this.tabContent.innerHTML = content;
+        });
     }
 
     renderOverview(preview) {

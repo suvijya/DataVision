@@ -91,20 +91,54 @@
                     <div class="dataset-info" id="datasetInfo"></div>
                 </div>
                 <div class="preview-content">
-                    <div class="preview-tabs">
-                        <button class="tab-btn active" data-tab="overview"><i class="fas fa-eye"></i> Overview</button>
-                        <button class="tab-btn" data-tab="sample"><i class="fas fa-table"></i> Sample Data</button>
-                        <button class="tab-btn" data-tab="fulldata"><i class="fas fa-database"></i> Full Data</button>
-                        <button class="tab-btn" data-tab="stats"><i class="fas fa-chart-bar"></i> Statistics</button>
-                        <button class="tab-btn" data-tab="quality"><i class="fas fa-check-circle"></i> Data Quality</button>
-                        <button class="tab-btn" data-tab="columns"><i class="fas fa-columns"></i> Columns</button>
-                        <button class="tab-btn" data-tab="statistical"><i class="fas fa-flask"></i> Statistical Analysis</button>
-                        <button class="tab-btn" data-tab="insights"><i class="fas fa-lightbulb"></i> AI Insights</button>
-                        <button class="tab-btn" data-tab="chartgallery"><i class="fas fa-chart-pie"></i> Chart Gallery</button>
+                    <!-- Left Sidebar Tabs -->
+                    <div class="preview-sidebar">
+                        <div class="sidebar-tabs">
+                            <button class="tab-btn active" data-tab="overview">
+                                <i class="fas fa-eye"></i>
+                                <span>Overview</span>
+                            </button>
+                            <button class="tab-btn" data-tab="sample">
+                                <i class="fas fa-table"></i>
+                                <span>Sample Data</span>
+                            </button>
+                            <button class="tab-btn" data-tab="fulldata">
+                                <i class="fas fa-database"></i>
+                                <span>Full Data</span>
+                            </button>
+                            <button class="tab-btn" data-tab="stats">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Statistics</span>
+                            </button>
+                            <button class="tab-btn" data-tab="quality">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Data Quality</span>
+                            </button>
+                            <button class="tab-btn" data-tab="columns">
+                                <i class="fas fa-columns"></i>
+                                <span>Columns</span>
+                            </button>
+                            <button class="tab-btn" data-tab="statistical">
+                                <i class="fas fa-flask"></i>
+                                <span>Statistical Analysis</span>
+                            </button>
+                            <button class="tab-btn" data-tab="insights">
+                                <i class="fas fa-lightbulb"></i>
+                                <span>AI Insights</span>
+                            </button>
+                            <button class="tab-btn" data-tab="chartgallery">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Chart Gallery</span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="tab-content" id="tabContent">
-                        <!-- Dynamic content will be loaded here -->
+                    <!-- Main Content Area -->
+                    <div class="preview-main">
+                        <div class="tab-content" id="tabContent">
+                            <!-- Dynamic content will be loaded here -->
+                        </div>
                     </div>
+                </div>
                     <div class="quick-actions" id="quickActions" style="display: none;">
                         <h4><i class="fas fa-bolt"></i> Quick Analysis</h4>
                         <div class="action-buttons">
