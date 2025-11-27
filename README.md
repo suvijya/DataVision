@@ -1,4 +1,4 @@
-# 🤖 PyData Assistant - AI-Powered Data Analysis Platform
+# 🤖 DataVision Assistant - AI-Powered Data Analysis Platform
 
 Transform your CSV data into insights using natural language queries powered by Google's Gemini AI.
 
@@ -256,3 +256,4 @@ LLM_MODEL=gemini-1.5-flash
 
 
 **Ready to explore your data with AI? Upload a CSV file and start asking questions!** 🚀
+
