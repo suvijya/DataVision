@@ -244,9 +244,6 @@ LLM_MODEL=gemini-1.5-flash
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
@@ -256,5 +253,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Pandas** for robust data analysis tools
 
 ---
+
 
 **Ready to explore your data with AI? Upload a CSV file and start asking questions!** 🚀
