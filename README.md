@@ -245,16 +245,10 @@ LLM_MODEL=gemini-1.5-flash
 5. Submit a pull request
 
 
-## 🙏 Acknowledgments
-
-- **Google Gemini** for powerful AI capabilities
-- **FastAPI** for the excellent web framework
-- **Plotly** for beautiful visualizations
-- **Pandas** for robust data analysis tools
-
 ---
 
 
 **Ready to explore your data with AI? Upload a CSV file and start asking questions!** 🚀
+
 
 
