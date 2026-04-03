@@ -2474,52 +2474,96 @@ class PyDataAssistant {
     formatAnalysisText(text) {
         if (!text) return '<p>No content available</p>';
         
-        // Split into lines
-        const lines = text.split('\n');
-        let html = '';
+        // 1. Pre-process to handle standard Markdown headers and dividers
+        let formatted = text.trim();
         
-        for (let line of lines) {
-            line = line.trim();
+        // Headers (### Header ### or ### Header)
+        formatted = formatted.replace(/^### (.*?) ###[ \t]*$/gm, '<h3 class="analysis-header">$1</h3>');
+        formatted = formatted.replace(/^### (.*?)$/gm, '<h3 class="analysis-header">$1</h3>');
+        
+        // Section separators (--- text --- or ---)
+        formatted = formatted.replace(/^--- (.*?) ---$/gm, '<h4 class="analysis-section">$1</h4>');
+        formatted = formatted.replace(/^---$/gm, '<hr class="analysis-divider">');
+        
+        // 2. Locate and render tables
+        // Find blocks of lines that look like Markdown tables (multiple lines with pipes)
+        const lines = formatted.split('\n');
+        let finalHtml = '';
+        let tableBuffer = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            const isTableLine = line.includes('|') && (line.startsWith('|') || line.split('|').length >= 2);
             
-            // Skip empty lines
-            if (!line) {
-                html += '<br>';
-                continue;
-            }
-            
-            // Headers (### format)
-            if (line.startsWith('###') && line.endsWith('###')) {
-                const headerText = line.replace(/###/g, '').trim();
-                html += `<h3 class="analysis-header">${headerText}</h3>`;
-                continue;
-            }
-            
-            // Section separators (---)
-            if (line.startsWith('---')) {
-                const sectionText = line.replace(/---/g, '').trim();
-                if (sectionText) {
-                    html += `<h4 class="analysis-section">${sectionText}</h4>`;
-                } else {
-                    html += '<hr class="analysis-divider">';
+            if (isTableLine) {
+                tableBuffer.push(line);
+            } else {
+                if (tableBuffer.length > 0) {
+                    finalHtml += this.renderMarkdownTable(tableBuffer);
+                    tableBuffer = [];
                 }
-                continue;
+                
+                if (!line) {
+                    finalHtml += '<br>';
+                } else if (line.startsWith('<')) {
+                    // Already HTML from our header/divider regexes
+                    finalHtml += line;
+                } else if (line.match(/^[•\-\*]\s*/)) {
+                    const bulletText = line.replace(/^[•\-\*]\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    finalHtml += `<div class="analysis-bullet">• ${bulletText}</div>`;
+                } else {
+                    const pText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    finalHtml += `<p class="analysis-text">${pText}</p>`;
+                }
             }
-            
-            // Bullet points (• or -)
-            if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
-                const bulletText = line.replace(/^[•\-\*]\s*/, '');
-                html += `<div class="analysis-bullet">• ${bulletText}</div>`;
-                continue;
-            }
-            
-            // Bold text (**text**)
-            line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            
-            // Regular paragraph
-            html += `<p class="analysis-text">${line}</p>`;
         }
         
-        return html;
+        if (tableBuffer.length > 0) {
+            finalHtml += this.renderMarkdownTable(tableBuffer);
+        }
+        
+        return finalHtml;
+    }
+
+    renderMarkdownTable(tableLines) {
+        // Filter out the separator row (e.g., |---|---|)
+        const rows = tableLines.filter(line => !line.match(/^[|\s\-:]+$/));
+        if (rows.length === 0) return '';
+
+        let tableHtml = '<div class="analysis-table-container"><table class="analysis-table">';
+        
+        const parseRow = (rowLine) => {
+            return rowLine.split('|')
+                .map(cell => cell.trim())
+                .filter((cell, index, array) => {
+                    // Filter out empty strings from start and end if it was a |wrapped| row
+                    if (index === 0 && cell === '') return false;
+                    if (index === array.length - 1 && cell === '') return false;
+                    return true;
+                });
+        };
+
+        // Header
+        const headers = parseRow(rows[0]);
+        tableHtml += '<thead><tr>';
+        headers.forEach(header => {
+            tableHtml += `<th>${header}</th>`;
+        });
+        tableHtml += '</tr></thead><tbody>';
+
+        // Body (rest of the filtered rows)
+        for (let i = 1; i < rows.length; i++) {
+            const cells = parseRow(rows[i]);
+            tableHtml += '<tr>';
+            // Use headers length to ensure row alignment
+            for (let j = 0; j < headers.length; j++) {
+                tableHtml += `<td>${cells[j] || ''}</td>`;
+            }
+            tableHtml += '</tr>';
+        }
+
+        tableHtml += '</tbody></table></div>';
+        return tableHtml;
     }
 
     // Utility Functions

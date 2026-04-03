@@ -79,7 +79,8 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting PyData Assistant Backend...")
     try:
         validate_configuration()
-        logger.info("✅ Startup complete")
+        logger.info("✅ Startup complete - CANARY: Version 2.1-DEBUG-BOOT-SUCCESS")
+        logger.info(f"Model configured: {settings.LLM_MODEL}")
     except Exception as e:
         logger.error(f"❌ Startup failed: {e}")
         raise

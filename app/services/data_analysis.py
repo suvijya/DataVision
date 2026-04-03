@@ -316,7 +316,7 @@ async def process_query_with_llm(session: Session, query: str) -> Tuple[QueryRes
             data={
                 'response_type': 'error',
                 'error': str(e),
-                'message': 'Query processing failed',
+                'message': f'Query processing failed: {str(e)}',
                 'error_type': 'processing_error'
             }
         )
@@ -400,10 +400,13 @@ INSTRUCTIONS:
    - train_test_split (sklearn.model_selection)
    - combinations, permutations (itertools) - for variable pair analysis
 13. For summaries: use clear section headers like "### Dataset Overview ###"
-14. For visualizations: Create charts ONLY when explicitly requested in the query
-15. For simple queries (overview, describe, summary), just use print() - NO visualization needed
-16. ⚠️ CRITICAL: For LINEAR REGRESSION - use sklearn LinearRegression, NOT statsmodels sm.OLS
-17. ⚠️ For p-values in regression - calculate manually using scipy.stats (already imported as 'stats')
+14. ⚠️ CRITICAL: For any tabular output (summary statistics, value counts, grouped data, correlations), ALWAYS use the `to_markdown()` helper.
+    - Example: `print(to_markdown(df.describe()))`
+    - Example: `print(to_markdown(df.groupby('category')['value'].mean()))`
+15. For visualizations: Create charts ONLY when explicitly requested in the query
+16. For simple queries (overview, describe, summary), just use `print(to_markdown(...))` - NO visualization needed
+17. ⚠️ CRITICAL: For LINEAR REGRESSION - use sklearn LinearRegression, NOT statsmodels sm.OLS
+18. ⚠️ For p-values in regression - calculate manually using scipy.stats (already imported as 'stats')
 
 STATISTICAL ANALYSIS EXAMPLES (NO IMPORTS NEEDED):
 - Normality Test: stats.shapiro(df['column'])
@@ -1000,7 +1003,18 @@ def _execute_code_safely(code: str, df: pd.DataFrame) -> Dict[str, Any]:
             'go': go,
             'df': df.copy(),  # Work with a copy to avoid modifying original
             'combinations': combinations,
-            'permutations': permutations
+            'permutations': permutations,
+            'to_markdown': lambda df, index=True: (
+                "\n| " + " | ".join([str(df.index.name) if df.index.name else "Index" for _ in [0]] + [str(c) for c in df.columns]) + " |\n" +
+                "| " + " | ".join(["---"] * (len(df.columns) + 1)) + " |\n" +
+                "\n".join(["| " + " | ".join([str(idx)] + [str(v) for v in row]) + " |" 
+                           for idx, row in df.iterrows()]) + "\n"
+            ) if isinstance(df, pd.DataFrame) else (
+                "\n| " + str(df.name if df.name else "Index") + " | Value |\n" +
+                "| --- | --- |\n" +
+                "\n".join(["| " + str(idx) + " | " + str(val) + " |" 
+                           for idx, val in df.items()]) + "\n"
+            ) if isinstance(df, pd.Series) else str(df)
         }
         
         # Add statistical libraries if available
